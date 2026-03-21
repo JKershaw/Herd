@@ -149,6 +149,7 @@ function SheepHerdingGame() {
 
   const ensureAudio = useCallback(() => {
     if (!audioRef.current) audioRef.current = new (window.AudioContext || window.webkitAudioContext)();
+    if (audioRef.current.state === "suspended") audioRef.current.resume();
     return audioRef.current;
   }, []);
 

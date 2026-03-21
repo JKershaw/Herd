@@ -706,8 +706,8 @@ export default function SheepHerdingGame() {
 
       <div style={{ position: "relative", border: "2px solid #2a3818", borderRadius: 2, lineHeight: 0, overflow: "hidden" }}>
         <canvas ref={canvasRef} width={W} height={H} style={{
-          width: W * 3, height: H * 3, imageRendering: "pixelated", display: "block",
-          maxWidth: "calc(100vw - 24px)", maxHeight: "calc(100vh - 220px)",
+          width: W * 3, maxWidth: "calc(100vw - 24px)", maxHeight: "calc(100vh - 220px)",
+          aspectRatio: `${W} / ${H}`, imageRendering: "pixelated", display: "block",
         }} />
 
         {gameState === "title" && (

@@ -1,4 +1,5 @@
 node_modules/
-screenshot-*.png
+*.png
 package.json
 package-lock.json
+test-results/

@@ -738,10 +738,7 @@ function SheepHerdingGame() {
             background: "#3a5820", color: "#d0dca8", border: "2px solid #5a7a38",
             padding: "10px 40px", fontSize: 14, fontFamily: "'Courier New', monospace",
             cursor: "pointer", letterSpacing: 3, borderRadius: 2,
-          }}
-            onMouseOver={e => e.target.style.background = "#4a6830"}
-            onMouseOut={e => e.target.style.background = "#3a5820"}
-          >START</button>
+          }}>START</button>
           <div style={{ color: "#3a4828", fontSize: 9, marginTop: 8 }}>Q / W / E &nbsp;or&nbsp; 1 / 2 / 3 &nbsp;&nbsp;·&nbsp;&nbsp; R = reset</div>
         </div>
       )}

@@ -657,14 +657,14 @@ function SheepHerdingGame() {
       <div style={{ color: "#a0b878", fontSize: 13, letterSpacing: 5, marginBottom: 3, textTransform: "uppercase", fontWeight: "bold" }}>
         Sheep Herder
       </div>
-      <div style={{ display: "flex", gap: 16, marginBottom: 4, color: "#7a8858", fontSize: 11, alignItems: "center" }}>
+      <div style={{ display: "flex", gap: 16, marginBottom: 4, color: "#94a870", fontSize: 11, alignItems: "center" }}>
         <span>{fmtTime(timer)}</span>
         <span style={{ color: "#a0b878" }}>{sheepCount}/{totalSheep} penned</span>
-        {focusInfo && gameState === "playing" && <span style={{ color: "#5a6838", fontSize: 10 }}>{focusInfo}</span>}
+        {focusInfo && gameState === "playing" && <span style={{ color: "#7a8858", fontSize: 10 }}>{focusInfo}</span>}
         {gameState === "playing" && (
           <div style={{ position: "relative", marginLeft: 4 }}>
             <button onClick={() => setShowSettings(v => !v)} style={{
-              background: showSettings ? "#3a4a20" : "none", border: "1px solid #3a4a20", color: "#8a9868",
+              background: showSettings ? "#3a4a20" : "none", border: "1px solid #3a4a20", color: "#a0b878",
               fontSize: 10, padding: "2px 8px", fontFamily: "'Courier New', monospace",
               cursor: "pointer", borderRadius: 2,
             }}>{showSettings ? "✕" : "⚙"} Settings</button>
@@ -674,13 +674,13 @@ function SheepHerdingGame() {
                 background: "#1a2410", border: "1px solid #3a4a20", borderRadius: 3,
                 padding: "10px 14px", minWidth: 180,
               }}>
-                <div style={{ color: "#8a9868", fontSize: 10, marginBottom: 6 }}>SHEEP COUNT</div>
+                <div style={{ color: "#a0b878", fontSize: 10, marginBottom: 6 }}>SHEEP COUNT</div>
                 <div style={{ display: "flex", gap: 4, marginBottom: 10 }}>
                   {[5, 7, 10, 15].map(n => (
                     <button key={n} onClick={() => { setTotalSheep(n); }} style={{
                       background: n === totalSheep ? "#4a6828" : "#222e14",
-                      color: n === totalSheep ? "#d0dca8" : "#4a5830",
-                      border: `1px solid ${n === totalSheep ? "#6a8a3a" : "#2a3818"}`,
+                      color: n === totalSheep ? "#d0dca8" : "#8a9868",
+                      border: `1px solid ${n === totalSheep ? "#6a8a3a" : "#3a4a20"}`,
                       borderRadius: 2, padding: "3px 9px", fontSize: 11,
                       fontFamily: "'Courier New', monospace", cursor: "pointer",
                     }}>{n}</button>
@@ -692,11 +692,11 @@ function SheepHerdingGame() {
                   cursor: "pointer", borderRadius: 2, width: "100%", letterSpacing: 1,
                 }}>RESTART</button>
                 <button onClick={() => { setShowSettings(false); setGameState("title"); }} style={{
-                  background: "#1e2a12", color: "#6a7848", border: "1px solid #2a3818",
+                  background: "#1e2a12", color: "#94a870", border: "1px solid #3a4a20",
                   padding: "5px 14px", fontSize: 11, fontFamily: "'Courier New', monospace",
                   cursor: "pointer", borderRadius: 2, width: "100%", letterSpacing: 1, marginTop: 4,
                 }}>MAIN MENU</button>
-                <div style={{ color: "#3a4828", fontSize: 8, marginTop: 6, textAlign: "center" }}>
+                <div style={{ color: "#6a7848", fontSize: 8, marginTop: 6, textAlign: "center" }}>
                   Changing sheep count applies on restart
                 </div>
               </div>
@@ -716,19 +716,19 @@ function SheepHerdingGame() {
           <div style={{ color: "#d0dca8", fontSize: 28, fontWeight: "bold", letterSpacing: 4, marginBottom: 6 }}>
             SHEEP HERDER
           </div>
-          <div style={{ color: "#7a8858", fontSize: 11, marginBottom: 14, textAlign: "center", lineHeight: 1.8, maxWidth: 380 }}>
+          <div style={{ color: "#94a870", fontSize: 11, marginBottom: 14, textAlign: "center", lineHeight: 1.8, maxWidth: 380 }}>
             Command your collie with three whistles.<br />
             The dog circles or approaches sheep — they flee from it.<br />
             Position the dog to push sheep through the gate into the pen.<br />
             Release all whistles to let the dog rest and refocus.
           </div>
           <div style={{ display: "flex", gap: 6, marginBottom: 12, alignItems: "center" }}>
-            <span style={{ color: "#5a6838", fontSize: 10, marginRight: 4 }}>SHEEP:</span>
+            <span style={{ color: "#8a9868", fontSize: 10, marginRight: 4 }}>SHEEP:</span>
             {[5, 7, 10, 15].map(n => (
               <button key={n} onClick={() => setTotalSheep(n)} style={{
                 background: n === totalSheep ? "#4a6828" : "#1e2a12",
-                color: n === totalSheep ? "#d0dca8" : "#4a5830",
-                border: `1px solid ${n === totalSheep ? "#6a8a3a" : "#2a3818"}`,
+                color: n === totalSheep ? "#d0dca8" : "#8a9868",
+                border: `1px solid ${n === totalSheep ? "#6a8a3a" : "#3a4a20"}`,
                 borderRadius: 2, padding: "4px 10px", fontSize: 12,
                 fontFamily: "'Courier New', monospace", cursor: "pointer",
                 transition: "all 0.15s",
@@ -740,7 +740,7 @@ function SheepHerdingGame() {
             padding: "10px 40px", fontSize: 14, fontFamily: "'Courier New', monospace",
             cursor: "pointer", letterSpacing: 3, borderRadius: 2,
           }}>START</button>
-          <div style={{ color: "#3a4828", fontSize: 9, marginTop: 8 }}>Q / W / E &nbsp;or&nbsp; 1 / 2 / 3 &nbsp;&nbsp;·&nbsp;&nbsp; R = reset</div>
+          <div style={{ color: "#6a7848", fontSize: 9, marginTop: 8 }}>Q / W / E &nbsp;or&nbsp; 1 / 2 / 3 &nbsp;&nbsp;·&nbsp;&nbsp; R = reset</div>
         </div>
       )}
 
@@ -758,7 +758,7 @@ function SheepHerdingGame() {
           }}>
             <div style={{ color: "#ffd740", fontSize: 24, fontWeight: "bold", letterSpacing: 4, marginBottom: 4 }}>ALL PENNED!</div>
             <div style={{ color: "#a0b878", fontSize: 15, marginBottom: 3 }}>{totalSheep} sheep — {fmtTime(timer)}</div>
-            <div style={{ color: "#5a6838", fontSize: 10, marginBottom: 14 }}>
+            <div style={{ color: "#8a9868", fontSize: 10, marginBottom: 14 }}>
               {timer < 25 ? "Lightning fast!" : timer < 45 ? "Sharp herding!" : timer < 90 ? "Well done!" : "Patience pays off!"}
             </div>
             <div style={{ display: "flex", gap: 8 }}>
@@ -768,7 +768,7 @@ function SheepHerdingGame() {
                 cursor: "pointer", letterSpacing: 2, borderRadius: 2,
               }}>AGAIN</button>
               <button onClick={() => setGameState("title")} style={{
-                background: "#1e2a12", color: "#6a7848", border: "2px solid #2a3818",
+                background: "#1e2a12", color: "#94a870", border: "2px solid #3a4a20",
                 padding: "8px 24px", fontSize: 12, fontFamily: "'Courier New', monospace",
                 cursor: "pointer", letterSpacing: 2, borderRadius: 2,
               }}>MENU</button>
@@ -805,7 +805,7 @@ function SheepHerdingGame() {
           );
         })}
       </div>
-      <div style={{ color: "#2a3418", fontSize: 8, marginTop: 5, textAlign: "center", maxWidth: 460, lineHeight: 1.5 }}>
+      <div style={{ color: "#5a6838", fontSize: 8, marginTop: 5, textAlign: "center", maxWidth: 460, lineHeight: 1.5 }}>
         Hold a whistle to command · Release to let the dog pause & refocus · Push sheep through the gate
       </div>
     </div>

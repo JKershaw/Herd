@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
   <title>Herd — Sheep Herding Game</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -13,7 +13,10 @@
       align-items: center;
       background: #1a2410;
       font-family: 'Courier New', monospace;
+      -webkit-tap-highlight-color: transparent;
+      -webkit-touch-callout: none;
     }
+    button { touch-action: manipulation; }
     #root {
       display: flex;
       justify-content: center;

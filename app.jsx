@@ -704,50 +704,51 @@ function SheepHerdingGame() {
         )}
       </div>
 
+      {gameState === "title" && (
+        <div style={{
+          display: "flex", flexDirection: "column",
+          alignItems: "center", justifyContent: "center",
+          border: "2px solid #2a3818", borderRadius: 2,
+          background: "rgba(10, 16, 5, 0.92)", padding: "24px 16px",
+          width: "100%", maxWidth: W * 3 + 4,
+        }}>
+          <div style={{ color: "#d0dca8", fontSize: 28, fontWeight: "bold", letterSpacing: 4, marginBottom: 6 }}>
+            SHEEP HERDER
+          </div>
+          <div style={{ color: "#7a8858", fontSize: 11, marginBottom: 14, textAlign: "center", lineHeight: 1.8, maxWidth: 380 }}>
+            Command your collie with three whistles.<br />
+            The dog circles or approaches sheep — they flee from it.<br />
+            Position the dog to push sheep through the gate into the pen.<br />
+            Release all whistles to let the dog rest and refocus.
+          </div>
+          <div style={{ display: "flex", gap: 6, marginBottom: 12, alignItems: "center" }}>
+            <span style={{ color: "#5a6838", fontSize: 10, marginRight: 4 }}>SHEEP:</span>
+            {[5, 7, 10, 15].map(n => (
+              <button key={n} onClick={() => setTotalSheep(n)} style={{
+                background: n === totalSheep ? "#4a6828" : "#1e2a12",
+                color: n === totalSheep ? "#d0dca8" : "#4a5830",
+                border: `1px solid ${n === totalSheep ? "#6a8a3a" : "#2a3818"}`,
+                borderRadius: 2, padding: "4px 10px", fontSize: 12,
+                fontFamily: "'Courier New', monospace", cursor: "pointer",
+                transition: "all 0.15s",
+              }}>{n}</button>
+            ))}
+          </div>
+          <button onClick={() => initGame()} style={{
+            background: "#3a5820", color: "#d0dca8", border: "2px solid #5a7a38",
+            padding: "10px 40px", fontSize: 14, fontFamily: "'Courier New', monospace",
+            cursor: "pointer", letterSpacing: 3, borderRadius: 2,
+          }}>START</button>
+          <div style={{ color: "#3a4828", fontSize: 9, marginTop: 8 }}>Q / W / E &nbsp;or&nbsp; 1 / 2 / 3 &nbsp;&nbsp;·&nbsp;&nbsp; R = reset</div>
+        </div>
+      )}
+
+      {gameState !== "title" && (
       <div style={{ position: "relative", border: "2px solid #2a3818", borderRadius: 2, lineHeight: 0, overflow: "hidden" }}>
         <canvas ref={canvasRef} width={W} height={H} style={{
           width: "100%", maxWidth: W * 3, height: "auto",
           aspectRatio: `${W} / ${H}`, imageRendering: "pixelated", display: "block",
         }} />
-
-        {gameState === "title" && (
-          <div style={{
-            position: "absolute", inset: 0, display: "flex", flexDirection: "column",
-            alignItems: "center", justifyContent: "center", background: "rgba(10, 16, 5, 0.92)",
-          }}>
-            <div style={{ color: "#d0dca8", fontSize: 28, fontWeight: "bold", letterSpacing: 4, marginBottom: 6 }}>
-              SHEEP HERDER
-            </div>
-            <div style={{ color: "#7a8858", fontSize: 11, marginBottom: 14, textAlign: "center", lineHeight: 1.8, maxWidth: 380, padding: "0 16px" }}>
-              Command your collie with three whistles.<br />
-              The dog circles or approaches sheep — they flee from it.<br />
-              Position the dog to push sheep through the gate into the pen.<br />
-              Release all whistles to let the dog rest and refocus.
-            </div>
-            <div style={{ display: "flex", gap: 6, marginBottom: 12, alignItems: "center" }}>
-              <span style={{ color: "#5a6838", fontSize: 10, marginRight: 4 }}>SHEEP:</span>
-              {[5, 7, 10, 15].map(n => (
-                <button key={n} onClick={() => setTotalSheep(n)} style={{
-                  background: n === totalSheep ? "#4a6828" : "#1e2a12",
-                  color: n === totalSheep ? "#d0dca8" : "#4a5830",
-                  border: `1px solid ${n === totalSheep ? "#6a8a3a" : "#2a3818"}`,
-                  borderRadius: 2, padding: "4px 10px", fontSize: 12,
-                  fontFamily: "'Courier New', monospace", cursor: "pointer",
-                  transition: "all 0.15s",
-                }}>{n}</button>
-              ))}
-            </div>
-            <button onClick={() => initGame()} style={{
-              background: "#3a5820", color: "#d0dca8", border: "2px solid #5a7a38",
-              padding: "10px 40px", fontSize: 14, fontFamily: "'Courier New', monospace",
-              cursor: "pointer", letterSpacing: 3, borderRadius: 2,
-            }}
-              onMouseOver={e => e.target.style.background = "#4a6830"}
-              onMouseOut={e => e.target.style.background = "#3a5820"}
-            >START</button>
-            <div style={{ color: "#3a4828", fontSize: 9, marginTop: 8 }}>Q / W / E &nbsp;or&nbsp; 1 / 2 / 3 &nbsp;&nbsp;·&nbsp;&nbsp; R = reset</div>
-          </div>
-        )}
 
         {gameState === "won" && (
           <div style={{
@@ -774,6 +775,7 @@ function SheepHerdingGame() {
           </div>
         )}
       </div>
+      )}
 
       <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
         {[

@@ -51,51 +51,29 @@ Then update the `<script>` tags in `index.html` to point to the local paths:
 
 Serve with any static file server (e.g. `npx serve .` or `python3 -m http.server`), since Babel's `text/babel` script type requires HTTP to fetch `app.jsx`.
 
-## Taking Screenshots with Playwright
+## Tests
 
-You can use Playwright to capture screenshots for testing the UI across different viewport sizes. This is useful for verifying layout changes without a physical device.
-
-### Setup
+Unit tests use Node's built-in test runner (`node:test`) — no test framework dependencies needed. Pure game logic (math, physics, clustering, AI, flocking) is extracted into `game.js` and tested in `tests/`.
 
 ```bash
-npm install playwright
+npm test
+```
+
+## Screenshots (Playwright)
+
+A self-contained Playwright script captures the game at desktop (1280x800) and mobile (375x812) viewports. It inlines `app.jsx` and local vendor copies of React/Babel so Chromium needs zero network access.
+
+```bash
+# One-time: download vendor files and install Chromium
+mkdir -p vendor
+curl -sL https://unpkg.com/react@18/umd/react.production.min.js -o vendor/react.production.min.js
+curl -sL https://unpkg.com/react-dom@18/umd/react-dom.production.min.js -o vendor/react-dom.production.min.js
+curl -sL https://unpkg.com/@babel/standalone/babel.min.js -o vendor/babel.min.js
 npx playwright install chromium
+
+# Capture screenshots
+node screenshot.mjs
 ```
-
-### Taking a screenshot
-
-```js
-const { chromium } = require('playwright');
-
-(async () => {
-  const browser = await chromium.launch();
-
-  // Mobile (iPhone-sized)
-  const mobile = await browser.newPage({ viewport: { width: 375, height: 812 } });
-  await mobile.goto('http://localhost:3000/');
-  await mobile.waitForTimeout(2000);
-  await mobile.screenshot({ path: 'screenshot-mobile.png', fullPage: true });
-
-  // Desktop
-  const desktop = await browser.newPage({ viewport: { width: 1280, height: 800 } });
-  await desktop.goto('http://localhost:3000/');
-  await desktop.waitForTimeout(2000);
-  await desktop.screenshot({ path: 'screenshot-desktop.png', fullPage: true });
-
-  // Click START to capture gameplay
-  await mobile.evaluate(() => {
-    for (const b of document.querySelectorAll('button')) {
-      if (b.textContent.includes('START')) { b.click(); break; }
-    }
-  });
-  await mobile.waitForTimeout(2000);
-  await mobile.screenshot({ path: 'screenshot-gameplay.png', fullPage: true });
-
-  await browser.close();
-})();
-```
-
-Run with `node screenshot.js` (while your local server is running).
 
 Screenshot files (`*.png`) are excluded from git via `.gitignore`.
 
@@ -104,8 +82,11 @@ Screenshot files (`*.png`) are excluded from git via `.gitignore`.
 ```
 index.html          — Entry point, loads React/Babel from CDN
 app.jsx             — Game component (adapted for CDN globals)
-sheep-herder.jsx    — Original React component (ES module format)
-.gitignore          — Excludes node_modules, screenshots, package files
+game.js             — Pure functions extracted from app.jsx (ES module exports for tests)
+sheep-herder.jsx    — Original React component (ES module format, reference only)
+tests/              — Unit tests (Node built-in test runner)
+screenshot.mjs      — Playwright screenshot capture script
+vendor/             — Local React/Babel copies for offline screenshots (gitignored)
 ```
 
 ### Architecture

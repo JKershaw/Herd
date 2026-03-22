@@ -60,7 +60,6 @@ function SheepHerdingGame() {
   const [sheepCount, setSheepCount] = useState(0);
   const [totalSheep, setTotalSheep] = useState(7);
   const [activeWhistle, setActiveWhistle] = useState(null);
-  const [focusInfo, setFocusInfo] = useState("");
   const [showSettings, setShowSettings] = useState(false);
 
   const ensureAudio = useCallback(() => {
@@ -81,7 +80,7 @@ function SheepHerdingGame() {
       })),
       clusters: [], numSheep: count,
     };
-    setTimer(0); setSheepCount(0); setGameState("playing"); setFocusInfo(""); setShowSettings(false);
+    setTimer(0); setSheepCount(0); setGameState("playing"); setShowSettings(false);
   }, [totalSheep]);
 
   useEffect(() => {
@@ -117,7 +116,6 @@ function SheepHerdingGame() {
     function localUpdateDog(dog, sheep, cmd, dt) {
       const result = updateDog(dog, sheep, cmd, dt);
       gameRef.current.clusters = result.clusters;
-      setFocusInfo(result.focusInfo);
     }
 
     function localUpdateSheep(sheep, dog, dt) {
@@ -350,7 +348,6 @@ function SheepHerdingGame() {
       <div style={{ display: "flex", gap: 16, marginBottom: 4, color: "#94a870", fontSize: 11, alignItems: "center" }}>
         <span>{fmtTime(timer)}</span>
         <span style={{ color: "#a0b878" }}>{sheepCount}/{totalSheep} penned</span>
-        {focusInfo && gameState === "playing" && <span style={{ color: "#7a8858", fontSize: 10 }}>{focusInfo}</span>}
         {gameState === "playing" && (
           <div style={{ position: "relative", marginLeft: 4 }}>
             <button onClick={() => setShowSettings(v => !v)} style={{

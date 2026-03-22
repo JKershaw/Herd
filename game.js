@@ -151,6 +151,10 @@ export function updateDog(dog, sheep, cmd, dt) {
   let rawTY = focus.y + Math.sin(dog.angle) * dog.distFromFocus + Math.cos(dog.wobble * 0.7) * 1;
 
   const projected = fenceCollide(rawTX, rawTY, 4);
+  // Keep the dog's target out of the pen so it doesn't path through it
+  if (isInPen(projected.x, projected.y)) {
+    projected.x = PEN.x - 6;
+  }
   dog.targetX = projected.x;
   dog.targetY = projected.y;
 
@@ -161,6 +165,18 @@ export function updateDog(dog, sheep, cmd, dt) {
     dog.vx = lerp(dog.vx, (dx / d) * spd, 0.12);
     dog.vy = lerp(dog.vy, (dy / d) * spd, 0.12);
   } else { dog.vx *= 0.8; dog.vy *= 0.8; }
+
+  // Pen avoidance — if the dog is inside the pen, steer it toward the gate exit
+  if (isInPen(dog.x, dog.y)) {
+    const exitX = PEN.x - 8;
+    const exitY = PEN.gateY + PEN.gateH / 2;
+    const toExitX = exitX - dog.x;
+    const toExitY = exitY - dog.y;
+    const toExitD = Math.sqrt(toExitX * toExitX + toExitY * toExitY) || 1;
+    const exitSpd = 50;
+    dog.vx = lerp(dog.vx, (toExitX / toExitD) * exitSpd, 0.15);
+    dog.vy = lerp(dog.vy, (toExitY / toExitD) * exitSpd, 0.15);
+  }
 
   dog.x += dog.vx * dt; dog.y += dog.vy * dt;
   const fc2 = fenceCollide(dog.x, dog.y, 3);

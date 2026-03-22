@@ -331,9 +331,9 @@ function SheepHerdingGame() {
   const fmtTime = (s) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
 
   const wColors = {
-    comebye: { bg: "#c49828", active: "#ffe04a", text: "#4a3a08" },
-    away: { bg: "#3878a0", active: "#58c8f0", text: "#0e2a3a" },
-    walkup: { bg: "#b04838", active: "#ff7060", text: "#3a0e08" },
+    comebye: { bg: "#c49828", active: "#ffe04a", text: "#fff8e0" },
+    away: { bg: "#3878a0", active: "#58c8f0", text: "#e0f0ff" },
+    walkup: { bg: "#b04838", active: "#ff7060", text: "#ffe8e4" },
   };
 
   return (
@@ -478,8 +478,8 @@ function SheepHerdingGame() {
               onPointerDown={(e) => { e.preventDefault(); wDown(cmd); }}
               onPointerUp={wUp} onPointerLeave={wUp} onContextMenu={e => e.preventDefault()}
               style={{
-                background: on ? cl.active : cl.bg, color: cl.text,
-                border: `2px solid ${on ? "#fff" : cl.text}`,
+                background: on ? cl.active : cl.bg, color: on ? "#1a1a1a" : cl.text,
+                border: `2px solid ${on ? "#fff" : "rgba(255,255,255,0.3)"}`,
                 borderRadius: 3, padding: "7px 11px",
                 fontFamily: "'Courier New', monospace", fontSize: 11, fontWeight: "bold",
                 cursor: "pointer", textAlign: "center", minWidth: 86,
@@ -487,7 +487,7 @@ function SheepHerdingGame() {
                 boxShadow: on ? `0 0 16px ${cl.active}50` : "none", touchAction: "none",
               }}>
               <div>{label}</div>
-              <div style={{ fontSize: 8, fontWeight: "normal", opacity: 0.6, marginTop: 2 }}>{sub} [{key}]</div>
+              <div style={{ fontSize: 9, fontWeight: "normal", opacity: 0.9, marginTop: 2 }}>{sub} [{key}]</div>
             </button>
           );
         })}

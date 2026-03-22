@@ -16,17 +16,15 @@ npx serve .
 
 ## Files
 
-- `app.jsx` — The game. Single React component using CDN globals (React, ReactDOM).
-- `game.js` — Pure functions extracted from app.jsx as ES module exports, used by tests.
+- `game.js` — Single source of truth for all pure game logic (constants, math, physics, simulation). Loaded as `<script type="module">` in the browser (exposes globals via `window`) and imported by tests via ES module exports.
+- `app.jsx` — React component, rendering, audio, and game loop. Uses globals from `game.js` and CDN globals (`React`, `ReactDOM`). Do not add imports/exports to it.
 - `sheep-herder.jsx` — Original ES module version. Reference only, not loaded.
-- `index.html` — Entry point. Loads React 18 + Babel from unpkg CDN.
+- `index.html` — Entry point. Loads React 18 + Babel from unpkg CDN, then `game.js`, then `app.jsx`.
 - `screenshot.mjs` — Playwright script to capture screenshots at desktop and mobile viewports.
 - `tests/` — Unit tests using Node's built-in test runner (`node:test`).
 - `vendor/` — Local copies of React/Babel for offline screenshot capture (gitignored).
 
-Only `app.jsx` is the live game code. Do not add imports/exports to it — it uses CDN globals (`React`, `ReactDOM`).
-
-When changing game logic in `app.jsx`, update the corresponding function in `game.js` to keep tests in sync.
+All pure game logic lives in `game.js`. When changing game logic, edit `game.js` — app.jsx calls it via thin wrappers. Do not duplicate logic between the two files.
 
 ## Architecture
 

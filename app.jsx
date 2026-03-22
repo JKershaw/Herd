@@ -269,30 +269,6 @@ function SheepHerdingGame() {
       if (whistleActive) {
         c.fillStyle = "rgba(255,255,200,0.22)";
         c.beginPath(); c.arc(dx, dy - 7, 4 + Math.sin(tick * 0.2) * 1.5, 0, Math.PI * 2); c.fill();
-        // Directional command indicator
-        const cmdR = 10 + Math.sin(tick * 0.15) * 1.5;
-        c.strokeStyle = "rgba(255,255,200,0.28)";
-        c.lineWidth = 1;
-        c.beginPath();
-        if (typeof whistleActive === "string" && whistleActive === "comebye") {
-          c.arc(dx, dy, cmdR, dir - 0.3, dir + 2.2); c.stroke();
-          // Arrow tip
-          const tipA = dir + 2.2;
-          c.fillStyle = "rgba(255,255,200,0.3)";
-          c.fillRect(Math.floor(dx + Math.cos(tipA) * cmdR), Math.floor(dy + Math.sin(tipA) * cmdR), 2, 2);
-        } else if (typeof whistleActive === "string" && whistleActive === "away") {
-          c.arc(dx, dy, cmdR, dir - 2.2, dir + 0.3); c.stroke();
-          const tipA = dir - 2.2;
-          c.fillStyle = "rgba(255,255,200,0.3)";
-          c.fillRect(Math.floor(dx + Math.cos(tipA) * cmdR), Math.floor(dy + Math.sin(tipA) * cmdR), 2, 2);
-        } else if (typeof whistleActive === "string" && whistleActive === "walkup") {
-          // Straight arrow toward focus
-          c.moveTo(dx + Math.cos(dir) * 6, dy + Math.sin(dir) * 6);
-          c.lineTo(dx + Math.cos(dir) * (cmdR + 4), dy + Math.sin(dir) * (cmdR + 4));
-          c.stroke();
-          c.fillStyle = "rgba(255,255,200,0.3)";
-          c.fillRect(Math.floor(dx + Math.cos(dir) * (cmdR + 4)), Math.floor(dy + Math.sin(dir) * (cmdR + 4)), 2, 2);
-        }
       }
       if (!whistleActive && d.idleTime > 0.8 && d.idleTime < 1.5) {
         const a = 0.3 * Math.min(1, (d.idleTime - 0.8) / 0.3);

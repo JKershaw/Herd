@@ -510,9 +510,9 @@ function SheepHerdingGame() {
   const fmtTime = (s) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
 
   const wColors = {
-    comebye: { bg: "#3a5828", active: "#5a8a3a", text: "#d0dca8", glow: "#6aaa4a" },
-    away: { bg: "#3a5828", active: "#5a8a3a", text: "#d0dca8", glow: "#6aaa4a" },
-    walkup: { bg: "#3a5828", active: "#5a8a3a", text: "#d0dca8", glow: "#6aaa4a" },
+    comebye: { bg: "#36562a", active: "#5aaa40", text: "#c8d8a0", glow: "#70c050", border: "#4a7a30" },
+    away: { bg: "#2a4a36", active: "#40aa6a", text: "#a8d8c0", glow: "#50c080", border: "#307a4a" },
+    walkup: { bg: "#3a5030", active: "#70b050", text: "#d0dca0", glow: "#90d060", border: "#5a8a38" },
   };
 
   return (
@@ -754,17 +754,17 @@ function SheepHerdingGame() {
               onPointerUp={wUp} onPointerLeave={wUp} onContextMenu={e => e.preventDefault()}
               style={{
                 background: on ? cl.active : cl.bg,
-                color: on ? "#f0f8e0" : cl.text,
-                border: `2px solid ${on ? "#8aba5a" : "#4a6a30"}`,
+                color: on ? "#f0ffe0" : cl.text,
+                border: `2px solid ${on ? cl.glow : cl.border}`,
                 borderRadius: 4, padding: IS_TOUCH ? "14px 8px" : "10px 11px",
                 fontFamily: "'Courier New', monospace", fontSize: 11, fontWeight: "bold",
                 cursor: "pointer", textAlign: "center", flex: 1, maxWidth: 140,
                 minHeight: IS_TOUCH ? 60 : 44,
                 transition: "all 0.08s",
-                transform: on ? "scale(0.96)" : "scale(1)",
-                boxShadow: on ? `0 0 20px ${cl.glow}60, inset 0 0 8px ${cl.glow}30` : "inset 0 -2px 0 rgba(0,0,0,0.2)",
+                transform: on ? "scale(0.97)" : "scale(1)",
+                boxShadow: on ? `0 0 24px ${cl.glow}70, inset 0 0 12px ${cl.glow}40` : `inset 0 -2px 0 rgba(0,0,0,0.25), 0 1px 3px rgba(0,0,0,0.3)`,
                 touchAction: "none",
-                filter: on ? "brightness(1.2)" : "none",
+                filter: on ? "brightness(1.3)" : "none",
               }}>
               <div style={{ fontSize: 18, lineHeight: 1, marginBottom: 3 }}>{icon}</div>
               <div style={{ fontSize: IS_TOUCH ? 10 : 9, fontWeight: "normal", opacity: 0.85, textTransform: "uppercase", letterSpacing: 0.5 }}>

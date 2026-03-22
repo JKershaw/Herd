@@ -167,4 +167,27 @@ export default [
     description: "Title screen showing high scores for 15-sheep mode",
     state: { gameState: "title", totalSheep: 15, scores: { 15: mockScores15 } },
   },
+  {
+    name: "onboarding-overlay",
+    description: "First-play onboarding overlay on top of game field",
+    state: { gameState: "playing", totalSheep: 7, timer: 0, sheepCount: 0 },
+    setup: async (page) => {
+      await page.evaluate(() => {
+        const overlay = document.createElement("div");
+        overlay.style.cssText = "position:fixed;inset:0;z-index:100;display:flex;flex-direction:column;align-items:center;justify-content:center;background:rgba(10,16,5,0.85);cursor:pointer;";
+        overlay.innerHTML = '<div style="background:#1a2a10;border:2px solid #3a5a20;border-radius:6px;padding:20px 24px;max-width:320px;text-align:center;font-family:Courier New,monospace">' +
+          '<div style="color:#c8d8a0;font-size:16px;font-weight:bold;margin-bottom:10px">HOW TO PLAY</div>' +
+          '<div style="color:#a0b878;font-size:12px;line-height:1.7;margin-bottom:12px">' +
+          '<strong style="color:#d0dca8">HOLD</strong> a button to command your dog.<br/>' +
+          '<strong style="color:#d0dca8">RELEASE</strong> to let the dog pause &amp; refocus.<br/><br/>' +
+          'Push all sheep through the <strong style="color:#ddc060">gate</strong> into the pen on the right side of the field.</div>' +
+          '<div style="display:flex;justify-content:center;gap:16px;margin-bottom:12px">' +
+          '<div style="text-align:center"><div style="font-size:20px">\u21B6</div><div style="color:#8a9868;font-size:9px">CIRCLE LEFT</div></div>' +
+          '<div style="text-align:center"><div style="font-size:20px">\u21B7</div><div style="color:#8a9868;font-size:9px">CIRCLE RIGHT</div></div>' +
+          '<div style="text-align:center"><div style="font-size:20px">\u2191</div><div style="color:#8a9868;font-size:9px">APPROACH</div></div></div>' +
+          '<div style="color:#6a7848;font-size:10px">Tap anywhere to start</div></div>';
+        document.body.appendChild(overlay);
+      });
+    },
+  },
 ];

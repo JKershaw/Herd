@@ -99,10 +99,6 @@ function SheepHerdingGame() {
   const [nameChars, setNameChars] = useState(scenario?.nameChars ?? [0, 0, 0]);
   const [nameCursor, setNameCursor] = useState(scenario?.nameCursor ?? 0);
   const [lastScore, setLastScore] = useState(scenario?.lastScore ?? null);
-  const [showOnboarding, setShowOnboarding] = useState(() => {
-    if (scenario) return false;
-    try { return !localStorage.getItem("herd-onboarded"); } catch { return true; }
-  });
 
   const ensureAudio = useCallback(() => {
     if (!audioRef.current) audioRef.current = new (window.AudioContext || window.webkitAudioContext)();
@@ -273,30 +269,6 @@ function SheepHerdingGame() {
       if (whistleActive) {
         c.fillStyle = "rgba(255,255,200,0.22)";
         c.beginPath(); c.arc(dx, dy - 7, 4 + Math.sin(tick * 0.2) * 1.5, 0, Math.PI * 2); c.fill();
-        // Directional command indicator
-        const cmdR = 10 + Math.sin(tick * 0.15) * 1.5;
-        c.strokeStyle = "rgba(255,255,200,0.28)";
-        c.lineWidth = 1;
-        c.beginPath();
-        if (typeof whistleActive === "string" && whistleActive === "comebye") {
-          c.arc(dx, dy, cmdR, dir - 0.3, dir + 2.2); c.stroke();
-          // Arrow tip
-          const tipA = dir + 2.2;
-          c.fillStyle = "rgba(255,255,200,0.3)";
-          c.fillRect(Math.floor(dx + Math.cos(tipA) * cmdR), Math.floor(dy + Math.sin(tipA) * cmdR), 2, 2);
-        } else if (typeof whistleActive === "string" && whistleActive === "away") {
-          c.arc(dx, dy, cmdR, dir - 2.2, dir + 0.3); c.stroke();
-          const tipA = dir - 2.2;
-          c.fillStyle = "rgba(255,255,200,0.3)";
-          c.fillRect(Math.floor(dx + Math.cos(tipA) * cmdR), Math.floor(dy + Math.sin(tipA) * cmdR), 2, 2);
-        } else if (typeof whistleActive === "string" && whistleActive === "walkup") {
-          // Straight arrow toward focus
-          c.moveTo(dx + Math.cos(dir) * 6, dy + Math.sin(dir) * 6);
-          c.lineTo(dx + Math.cos(dir) * (cmdR + 4), dy + Math.sin(dir) * (cmdR + 4));
-          c.stroke();
-          c.fillStyle = "rgba(255,255,200,0.3)";
-          c.fillRect(Math.floor(dx + Math.cos(dir) * (cmdR + 4)), Math.floor(dy + Math.sin(dir) * (cmdR + 4)), 2, 2);
-        }
       }
       if (!whistleActive && d.idleTime > 0.8 && d.idleTime < 1.5) {
         const a = 0.3 * Math.min(1, (d.idleTime - 0.8) / 0.3);
@@ -774,40 +746,6 @@ function SheepHerdingGame() {
           );
         })}
       </div>
-
-      {showOnboarding && gameState === "playing" && (
-        <div
-          onClick={() => { setShowOnboarding(false); try { localStorage.setItem("herd-onboarded", "1"); } catch {} }}
-          style={{
-            position: "fixed", inset: 0, zIndex: 100,
-            display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
-            background: "rgba(10, 16, 5, 0.85)", cursor: "pointer",
-          }}>
-          <div style={{ background: "#1a2a10", border: "2px solid #3a5a20", borderRadius: 6, padding: "20px 24px", maxWidth: 320, textAlign: "center" }}>
-            <div style={{ color: "#c8d8a0", fontSize: 16, fontWeight: "bold", marginBottom: 10 }}>HOW TO PLAY</div>
-            <div style={{ color: "#a0b878", fontSize: 12, lineHeight: 1.7, marginBottom: 12 }}>
-              <strong style={{ color: "#d0dca8" }}>HOLD</strong> a button to command your dog.<br />
-              <strong style={{ color: "#d0dca8" }}>RELEASE</strong> to let the dog pause & refocus.<br /><br />
-              Push all sheep through the <strong style={{ color: "#ddc060" }}>gate</strong> into the pen on the right side of the field.
-            </div>
-            <div style={{ display: "flex", justifyContent: "center", gap: 16, marginBottom: 12 }}>
-              <div style={{ textAlign: "center" }}>
-                <div style={{ fontSize: 20 }}>{"\u21B6"}</div>
-                <div style={{ color: "#8a9868", fontSize: 9 }}>CIRCLE LEFT</div>
-              </div>
-              <div style={{ textAlign: "center" }}>
-                <div style={{ fontSize: 20 }}>{"\u21B7"}</div>
-                <div style={{ color: "#8a9868", fontSize: 9 }}>CIRCLE RIGHT</div>
-              </div>
-              <div style={{ textAlign: "center" }}>
-                <div style={{ fontSize: 20 }}>{"\u2191"}</div>
-                <div style={{ color: "#8a9868", fontSize: 9 }}>APPROACH</div>
-              </div>
-            </div>
-            <div style={{ color: "#6a7848", fontSize: 10 }}>Tap anywhere to start</div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

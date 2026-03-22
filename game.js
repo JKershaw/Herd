@@ -1,6 +1,6 @@
-// game.js — Pure functions extracted from app.jsx for testability.
-// app.jsx remains the single runtime file (CDN globals, no imports).
-// This file mirrors those functions with ES module exports so tests can import them.
+// game.js — Single source of truth for all pure game logic.
+// Loaded as <script type="module"> in index.html (globals via window assignment).
+// Also imported by tests via ES module exports.
 
 // === Constants ===
 
@@ -93,9 +93,7 @@ export function createDog() {
   };
 }
 
-// === Simulation (updateSheep / updateDog / updateParticles) ===
-// These are closures in app.jsx's useEffect. We extract simplified versions
-// that take explicit state objects so they can be tested in isolation.
+// === Simulation ===
 
 export function updateParticles(particles, dt) {
   return particles.filter(p => {
@@ -322,4 +320,15 @@ export function updateSheep(sheep, dog, dt, tick) {
   }
 
   return { settledCount, newParticles };
+}
+
+// Expose as globals when loaded in the browser via <script type="module">
+if (typeof window !== 'undefined') {
+  Object.assign(window, {
+    W, H, PEN, FENCE_L, FENCE_R, FENCE_T, FENCE_B,
+    lerp, dist, clamp, angleDiff,
+    wallInfo, fenceCollide, isInPen,
+    clusterSheep, createSheep, createDog,
+    updateParticles, updateDog, updateSheep,
+  });
 }

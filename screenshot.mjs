@@ -4,6 +4,7 @@ import { readFileSync } from "fs";
 const react = readFileSync("vendor/react.production.min.js", "utf-8");
 const reactDom = readFileSync("vendor/react-dom.production.min.js", "utf-8");
 const babel = readFileSync("vendor/babel.min.js", "utf-8");
+const gameJs = readFileSync("game.js", "utf-8");
 const appJsx = readFileSync("app.jsx", "utf-8");
 
 // Build a fully self-contained HTML page — zero network requests
@@ -30,6 +31,7 @@ const html = `<!DOCTYPE html>
   <script>${react}</script>
   <script>${reactDom}</script>
   <script>${babel}</script>
+  <script type="module">${gameJs}</script>
   <script type="text/babel" data-type="module">${appJsx}</script>
 </body>
 </html>`;

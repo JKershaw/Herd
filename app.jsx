@@ -441,7 +441,7 @@ function SheepHerdingGame() {
         {gameState === "won" && (
           <div style={{
             position: "absolute", inset: 0, display: "flex", flexDirection: "column",
-            alignItems: "center", justifyContent: "center", background: "rgba(10, 16, 5, 0.88)",
+            alignItems: "center", justifyContent: "center", background: "rgba(10, 16, 5, 0.88)", lineHeight: "normal",
           }}>
             <div style={{ color: "#ffd740", fontSize: 24, fontWeight: "bold", letterSpacing: 4, marginBottom: 4 }}>ALL PENNED!</div>
             <div style={{ color: "#a0b878", fontSize: 15, marginBottom: 3 }}>{totalSheep} sheep — {fmtTime(timer)}</div>

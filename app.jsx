@@ -275,17 +275,19 @@ function SheepHerdingGame() {
     }
 
     function renderSprites(c, sprites) {
+      const cellW = 48, cellH = 36;
       const cols = Math.min(sprites.length, 5);
       const rows = Math.ceil(sprites.length / cols);
-      const cellW = Math.floor(W / cols);
-      const cellH = Math.floor(H / rows);
+      const gridW = cols * cellW, gridH = rows * cellH;
+      const ox = Math.floor((W - gridW) / 2);
+      const oy = Math.floor((H - gridH) / 2);
 
       c.fillStyle = "#1a2410"; c.fillRect(0, 0, W, H);
 
       sprites.forEach((sp, i) => {
         const col = i % cols, row = Math.floor(i / cols);
-        const cx = cellW * col + cellW / 2;
-        const cy = cellH * row + cellH / 2 - 4;
+        const cx = ox + col * cellW + cellW / 2;
+        const cy = oy + row * cellH + cellH / 2 - 4;
 
         if (sp.type === "sheep") {
           drawSheep(c, { x: cx, y: cy, wobble: 0, isGrazing: false, panic: 0, settled: false, headDir: 0, ...sp.overrides });
@@ -299,6 +301,10 @@ function SheepHerdingGame() {
           c.fillText(sp.label, cx, cy + 18);
         }
       });
+
+      // Expose clip bounds for screenshot cropping
+      const pad = 4;
+      window.__SPRITE_CLIP = { x: ox - pad, y: oy - pad, w: gridW + pad * 2, h: gridH + pad * 2 };
     }
 
     function render(c) {

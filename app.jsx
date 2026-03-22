@@ -600,6 +600,7 @@ function SheepHerdingGame() {
                 cursor: "pointer", letterSpacing: 2, borderRadius: 2,
               }}>MENU</button>
             </div>
+            <a href="https://jkershaw.com" target="_blank" rel="noopener noreferrer" style={{ color: "#6a7848", fontSize: 9, marginTop: 10, textDecoration: "none" }}>jkershaw.com</a>
           </div>);
         })()}
       </div>

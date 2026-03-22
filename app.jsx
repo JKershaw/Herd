@@ -510,7 +510,7 @@ function SheepHerdingGame() {
 
         {gameState === "enterName" && (() => {
           const ALPHA = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
-          const spin = (i, dir) => setNameChars(c => { const n = [...c]; n[i] = (n[i] + dir + 26) % 26; return n; });
+          const spin = (i, dir) => { setNameCursor(i); setNameChars(c => { const n = [...c]; n[i] = (n[i] + dir + 26) % 26; return n; }); };
           const submitName = () => {
             const name = nameChars.map(i => ALPHA[i]).join("");
             const scores = saveScore(totalSheep, name, timer);
@@ -534,13 +534,13 @@ function SheepHerdingGame() {
                     fontSize: 14, width: 28, height: 20, cursor: "pointer",
                     fontFamily: "'Courier New', monospace",
                   }}>{"\u25B2"}</button>
-                  <div style={{
+                  <button style={{
                     color: nameCursor === i ? "#ffd740" : "#d0dca8", fontSize: 24, fontWeight: "bold",
                     fontFamily: "'Courier New', monospace", width: 28, textAlign: "center",
                     background: nameCursor === i ? "rgba(255,215,64,0.1)" : "none",
                     border: `1px solid ${nameCursor === i ? "#ffd740" : "#3a4a20"}`,
                     padding: "2px 0", cursor: "pointer",
-                  }} onClick={() => setNameCursor(i)}>{ALPHA[ci]}</div>
+                  }} onClick={() => setNameCursor(i)}>{ALPHA[ci]}</button>
                   <button onClick={() => spin(i, 1)} style={{
                     background: "none", border: "1px solid #3a4a20", color: "#a0b878",
                     fontSize: 14, width: 28, height: 20, cursor: "pointer",

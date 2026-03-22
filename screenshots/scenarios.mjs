@@ -59,6 +59,23 @@ export default [
     },
     viewports: ["desktop"],
   },
+  // --- Pop animation sprite sheet ---
+  {
+    name: "sprites-sheep-pop",
+    description: "Sheep at various pop-in/pop-out scale stages",
+    canvasOnly: true,
+    state: {
+      gameState: "playing",
+      sprites: [
+        { type: "sheep", label: "Scale 0.2", overrides: { headDir: 0, wobble: 0.8, scale: 0.2 } },
+        { type: "sheep", label: "Scale 0.4", overrides: { headDir: 0, wobble: 0.8, scale: 0.4 } },
+        { type: "sheep", label: "Scale 0.6", overrides: { headDir: 0, wobble: 0.8, scale: 0.6 } },
+        { type: "sheep", label: "Scale 0.8", overrides: { headDir: 0, wobble: 0.8, scale: 0.8 } },
+        { type: "sheep", label: "Full", overrides: { headDir: 0, wobble: 0.8, scale: 1 } },
+      ],
+    },
+    viewports: ["desktop"],
+  },
   {
     name: "title-default",
     description: "Title screen with default settings",
@@ -88,6 +105,11 @@ export default [
     name: "settings-open",
     description: "Playing state with settings dropdown visible",
     state: { gameState: "playing", totalSheep: 7, timer: 15, sheepCount: 1, showSettings: true },
+  },
+  {
+    name: "settings-changed-count",
+    description: "Settings dropdown after selecting a different sheep count (15)",
+    state: { gameState: "playing", totalSheep: 15, timer: 15, sheepCount: 0, showSettings: true },
   },
   {
     name: "enter-name",

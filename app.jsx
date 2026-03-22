@@ -619,13 +619,15 @@ function SheepHerdingGame() {
                           g.popQueue.push({ type: "add", sheep: s });
                         }
                       } else if (diff < 0) {
-                        // Remove non-settled sheep first, preferring those furthest from pen
+                        // Remove non-settled sheep first, then settled if needed
                         const removable = g.sheep
-                          .filter(s => !s.settled && !s.popOut)
+                          .filter(s => !s.popOut)
                           .sort((a, b) => {
+                            // Non-settled before settled, then furthest from pen first
+                            if (a.settled !== b.settled) return a.settled ? 1 : -1;
                             const da = Math.sqrt((a.x - PEN.x) ** 2 + (a.y - PEN.y) ** 2);
                             const db = Math.sqrt((b.x - PEN.x) ** 2 + (b.y - PEN.y) ** 2);
-                            return db - da; // furthest first
+                            return db - da;
                           });
                         const toRemove = removable.slice(0, Math.abs(diff));
                         toRemove.forEach(s => g.popQueue.push({ type: "remove", sheep: s }));

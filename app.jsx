@@ -99,10 +99,6 @@ function SheepHerdingGame() {
   const [nameChars, setNameChars] = useState(scenario?.nameChars ?? [0, 0, 0]);
   const [nameCursor, setNameCursor] = useState(scenario?.nameCursor ?? 0);
   const [lastScore, setLastScore] = useState(scenario?.lastScore ?? null);
-  const [showOnboarding, setShowOnboarding] = useState(() => {
-    if (scenario) return false;
-    try { return !localStorage.getItem("herd-onboarded"); } catch { return true; }
-  });
 
   const ensureAudio = useCallback(() => {
     if (!audioRef.current) audioRef.current = new (window.AudioContext || window.webkitAudioContext)();
@@ -774,40 +770,6 @@ function SheepHerdingGame() {
           );
         })}
       </div>
-
-      {showOnboarding && gameState === "playing" && (
-        <div
-          onClick={() => { setShowOnboarding(false); try { localStorage.setItem("herd-onboarded", "1"); } catch {} }}
-          style={{
-            position: "fixed", inset: 0, zIndex: 100,
-            display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
-            background: "rgba(10, 16, 5, 0.85)", cursor: "pointer",
-          }}>
-          <div style={{ background: "#1a2a10", border: "2px solid #3a5a20", borderRadius: 6, padding: "20px 24px", maxWidth: 320, textAlign: "center" }}>
-            <div style={{ color: "#c8d8a0", fontSize: 16, fontWeight: "bold", marginBottom: 10 }}>HOW TO PLAY</div>
-            <div style={{ color: "#a0b878", fontSize: 12, lineHeight: 1.7, marginBottom: 12 }}>
-              <strong style={{ color: "#d0dca8" }}>HOLD</strong> a button to command your dog.<br />
-              <strong style={{ color: "#d0dca8" }}>RELEASE</strong> to let the dog pause & refocus.<br /><br />
-              Push all sheep through the <strong style={{ color: "#ddc060" }}>gate</strong> into the pen on the right side of the field.
-            </div>
-            <div style={{ display: "flex", justifyContent: "center", gap: 16, marginBottom: 12 }}>
-              <div style={{ textAlign: "center" }}>
-                <div style={{ fontSize: 20 }}>{"\u21B6"}</div>
-                <div style={{ color: "#8a9868", fontSize: 9 }}>CIRCLE LEFT</div>
-              </div>
-              <div style={{ textAlign: "center" }}>
-                <div style={{ fontSize: 20 }}>{"\u21B7"}</div>
-                <div style={{ color: "#8a9868", fontSize: 9 }}>CIRCLE RIGHT</div>
-              </div>
-              <div style={{ textAlign: "center" }}>
-                <div style={{ fontSize: 20 }}>{"\u2191"}</div>
-                <div style={{ color: "#8a9868", fontSize: 9 }}>APPROACH</div>
-              </div>
-            </div>
-            <div style={{ color: "#6a7848", fontSize: 10 }}>Tap anywhere to start</div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

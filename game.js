@@ -78,7 +78,7 @@ export function createSheep(n) {
     vx: 0, vy: 0, wobble: Math.random() * Math.PI * 2,
     grazeTimer: Math.random() * 200, isGrazing: false,
     headDir: Math.random() * Math.PI * 2, settled: false, settleTimer: 0,
-    panic: 0, fleeTimer: 0,
+    panic: 0, fleeTimer: 0, scale: 1,
   }));
 }
 

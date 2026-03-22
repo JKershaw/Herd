@@ -59,6 +59,22 @@ function celebSound(ctx, index) {
   } catch (e) {}
 }
 
+function popSound(ctx, appearing) {
+  if (!ctx) return;
+  try {
+    const o = ctx.createOscillator(), g = ctx.createGain();
+    o.type = "sine";
+    const freq = appearing ? 800 : 500;
+    const sweep = appearing ? 1.4 : 0.6;
+    o.frequency.setValueAtTime(freq, ctx.currentTime);
+    o.frequency.exponentialRampToValueAtTime(freq * sweep, ctx.currentTime + 0.06);
+    g.gain.setValueAtTime(0.06, ctx.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.06);
+    o.connect(g).connect(ctx.destination);
+    o.start(); o.stop(ctx.currentTime + 0.06);
+  } catch (e) {}
+}
+
 function winFanfare(ctx) {
   if (!ctx) return;
   try {
@@ -116,7 +132,7 @@ function SheepHerdingGame() {
         y: Math.floor(FENCE_T + Math.random() * (FENCE_B - FENCE_T)),
         shade: Math.floor(Math.random() * 3),
       })),
-      clusters: [], numSheep: count,
+      clusters: [], numSheep: count, popQueue: [],
     };
     setTimer(0); setSheepCount(0); setGameState("playing"); setShowSettings(false);
     setNameChars([0, 0, 0]); setNameCursor(0); setLastScore(null);
@@ -134,7 +150,7 @@ function SheepHerdingGame() {
           y: Math.floor(FENCE_T + Math.random() * (FENCE_B - FENCE_T)),
           shade: Math.floor(Math.random() * 3),
         })),
-        clusters: [], numSheep: count,
+        clusters: [], numSheep: count, popQueue: [],
       };
       if (scenario.activeWhistle) whistleBtnRef.current = scenario.activeWhistle;
       if (!scenarioNeedsCanvas) window.__HERD_READY = true;
@@ -209,8 +225,14 @@ function SheepHerdingGame() {
     function px(c, x, y, w, h, col) { c.fillStyle = col; c.fillRect(Math.floor(x), Math.floor(y), w, h); }
 
     function drawSheep(c, s) {
+      const sc = s.scale != null ? s.scale : 1;
+      if (sc <= 0) return;
       const bx = Math.floor(s.x), by = Math.floor(s.y);
       const wb = s.isGrazing ? Math.sin(s.wobble * 0.5) * 0.5 : Math.sin(s.wobble) * 0.3;
+
+      if (sc < 1) {
+        c.save(); c.translate(bx, by); c.scale(sc, sc); c.translate(-bx, -by);
+      }
 
       c.fillStyle = "rgba(0,0,0,0.13)"; c.fillRect(bx - 2, by + 3, 6, 2);
 
@@ -231,6 +253,8 @@ function SheepHerdingGame() {
         c.fillStyle = "#4CAF50";
         c.fillRect(bx - 1, by - 5, 1, 1); c.fillRect(bx, by - 6, 1, 2); c.fillRect(bx + 1, by - 7, 1, 1);
       }
+
+      if (sc < 1) c.restore();
     }
 
     function drawDog(c, d, tick, whistleActive) {
@@ -453,9 +477,9 @@ function SheepHerdingGame() {
       localUpdateSheep(g.sheep, g.started ? g.dog : { x: -999, y: -999 }, dt);
       localUpdateParticles(dt);
 
-      const settled = g.sheep.filter(s => s.settled).length;
+      const settled = g.sheep.filter(s => s.settled && !s.popOut).length;
       setSheepCount(settled);
-      if (settled === g.numSheep && !g.won) {
+      if (settled === g.numSheep && !g.won && g.popQueue.length === 0) {
         g.won = true; g.winDelay = 0; g.finalTime = timer;
         winFanfare(ensureAudio());
         for (let p = 0; p < 50; p++) {
@@ -466,6 +490,64 @@ function SheepHerdingGame() {
             life: 1.8, color: ["#ffd740", "#ff6e40", "#4CAF50", "#fff", "#42a5f5"][p % 5],
             size: 1.5 + Math.random(),
           });
+        }
+      }
+
+      // Process pop queue — staggered spawning/removing of sheep
+      if (g.popQueue.length > 0) {
+        g.popQueueTimer = (g.popQueueTimer || 0) + dt;
+        while (g.popQueue.length > 0 && g.popQueueTimer >= 0.06) {
+          g.popQueueTimer -= 0.06;
+          const item = g.popQueue.shift();
+          if (item.type === "add") {
+            const s = item.sheep;
+            s.scale = 0.01;
+            s.popIn = true;
+            g.sheep.push(s);
+            popSound(audioRef.current, true);
+          } else if (item.type === "remove") {
+            item.sheep.popOut = true;
+            popSound(audioRef.current, false);
+          }
+        }
+      }
+
+      // Animate pop scales
+      for (let i = g.sheep.length - 1; i >= 0; i--) {
+        const s = g.sheep[i];
+        if (s.popIn) {
+          s.scale = Math.min(s.scale + dt * 6, 1);
+          if (s.scale >= 1) {
+            s.scale = 1; s.popIn = false;
+            // Pop-in particles
+            for (let p = 0; p < 6; p++) {
+              const a = (p / 6) * Math.PI * 2;
+              g.particles.push({
+                x: s.x, y: s.y,
+                vx: Math.cos(a) * (18 + Math.random() * 12),
+                vy: Math.sin(a) * (18 + Math.random() * 12) - 10,
+                life: 0.6, color: ["#ffd740", "#4CAF50", "#fff"][p % 3],
+                size: 1 + Math.random() * 0.5,
+              });
+            }
+          }
+        }
+        if (s.popOut) {
+          s.scale = Math.max(s.scale - dt * 7, 0);
+          if (s.scale <= 0) {
+            // Pop-out particles
+            for (let p = 0; p < 6; p++) {
+              const a = (p / 6) * Math.PI * 2;
+              g.particles.push({
+                x: s.x, y: s.y,
+                vx: Math.cos(a) * (12 + Math.random() * 8),
+                vy: Math.sin(a) * (12 + Math.random() * 8) - 8,
+                life: 0.4, color: ["#e0e0d0", "#c8d8a0", "#fff"][p % 3],
+                size: 1 + Math.random() * 0.3,
+              });
+            }
+            g.sheep.splice(i, 1);
+          }
         }
       }
 
@@ -518,7 +600,41 @@ function SheepHerdingGame() {
                 <div style={{ color: "#a0b878", fontSize: 10, marginBottom: 6 }}>SHEEP COUNT</div>
                 <div style={{ display: "flex", gap: 4, marginBottom: 10 }}>
                   {SHEEP_OPTIONS.map(n => (
-                    <button key={n} onClick={() => { setTotalSheep(n); }} style={{
+                    <button key={n} onClick={() => {
+                      if (n === totalSheep) return;
+                      const g = gameRef.current;
+                      if (!g) return;
+                      ensureAudio();
+                      // Cancel any pending pops and remove any mid-pop-out sheep
+                      g.popQueue = [];
+                      g.popQueueTimer = 0;
+                      g.sheep = g.sheep.filter(s => !s.popOut);
+                      g.sheep.forEach(s => { if (s.popIn) { s.popIn = false; s.scale = 1; } });
+                      const currentCount = g.sheep.length;
+                      const diff = n - currentCount;
+                      if (diff > 0) {
+                        // Add sheep with staggered pop-in
+                        for (let i = 0; i < diff; i++) {
+                          const s = createSheep(1)[0];
+                          g.popQueue.push({ type: "add", sheep: s });
+                        }
+                      } else if (diff < 0) {
+                        // Remove non-settled sheep first, then settled if needed
+                        const removable = g.sheep
+                          .filter(s => !s.popOut)
+                          .sort((a, b) => {
+                            // Non-settled before settled, then furthest from pen first
+                            if (a.settled !== b.settled) return a.settled ? 1 : -1;
+                            const da = Math.sqrt((a.x - PEN.x) ** 2 + (a.y - PEN.y) ** 2);
+                            const db = Math.sqrt((b.x - PEN.x) ** 2 + (b.y - PEN.y) ** 2);
+                            return db - da;
+                          });
+                        const toRemove = removable.slice(0, Math.abs(diff));
+                        toRemove.forEach(s => g.popQueue.push({ type: "remove", sheep: s }));
+                      }
+                      g.numSheep = n;
+                      setTotalSheep(n);
+                    }} style={{
                       background: n === totalSheep ? "#4a6828" : "#222e14",
                       color: n === totalSheep ? "#d0dca8" : "#8a9868",
                       border: `1px solid ${n === totalSheep ? "#6a8a3a" : "#3a4a20"}`,
@@ -537,9 +653,6 @@ function SheepHerdingGame() {
                   padding: "5px 14px", fontSize: 11, fontFamily: "'Courier New', monospace",
                   cursor: "pointer", borderRadius: 2, width: "100%", letterSpacing: 1, marginTop: 4,
                 }}>MAIN MENU</button>
-                <div style={{ color: "#6a7848", fontSize: 8, marginTop: 6, textAlign: "center" }}>
-                  Changing sheep count applies on restart
-                </div>
               </div>
             )}
           </div>

@@ -172,7 +172,9 @@ export function updateDog(dog, sheep, cmd, dt) {
   dog.x = fc2.x; dog.y = fc2.y;
 
   const dSpd2 = Math.sqrt(dog.vx * dog.vx + dog.vy * dog.vy);
-  const targetDir = dSpd2 > 3 ? Math.atan2(dog.vy, dog.vx) : dog.lookDir;
+  const moveDir = Math.atan2(dog.vy, dog.vx);
+  const blend = clamp((dSpd2 - 3) / 7, 0, 1);
+  const targetDir = dog.lookDir + angleDiff(dog.lookDir, moveDir) * blend;
   dog.renderDir = dog.renderDir + angleDiff(dog.renderDir, targetDir) * Math.min(dt * 8, 0.25);
 
   const focusInfo = clusters.length > 1

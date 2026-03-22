@@ -269,9 +269,11 @@ function SheepHerdingGame() {
       if (Math.abs(fc2.y - dog.y) > 0.1) { dog.vy = 0; }
       dog.x = fc2.x; dog.y = fc2.y;
 
-      // Smooth visual facing direction — never snaps
+      // Smooth visual facing direction — blend between look and move dirs to avoid flicker
       const dSpd2 = Math.sqrt(dog.vx * dog.vx + dog.vy * dog.vy);
-      const targetDir = dSpd2 > 3 ? Math.atan2(dog.vy, dog.vx) : dog.lookDir;
+      const moveDir = Math.atan2(dog.vy, dog.vx);
+      const blend = clamp((dSpd2 - 3) / 7, 0, 1);
+      const targetDir = dog.lookDir + angleDiff(dog.lookDir, moveDir) * blend;
       dog.renderDir = dog.renderDir + angleDiff(dog.renderDir, targetDir) * Math.min(dt * 8, 0.25);
 
       setFocusInfo(clusters.length > 1 ? `Focus: group of ${focus.size}` : clusters.length === 1 ? `Flock: ${focus.size}` : "");

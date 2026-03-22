@@ -5,6 +5,8 @@ const { useState, useEffect, useRef, useCallback } = React;
 // === High scores (localStorage, top 5 per sheep count) ===
 const HS_KEY = "herd-highscores";
 function getScores(n) {
+  const sc = window.__HERD_SCENARIO;
+  if (sc && sc.scores) return sc.scores[n] || [];
   try { return (JSON.parse(localStorage.getItem(HS_KEY)) || {})[n] || []; }
   catch { return []; }
 }
@@ -73,21 +75,27 @@ const isLocal = location.hostname === "localhost" || location.hostname === "127.
 const SHEEP_OPTIONS = isLocal ? [1, 5, 7, 10, 15] : [5, 7, 10, 15];
 
 function SheepHerdingGame() {
+  // Scenario mode: when __HERD_SCENARIO is set, render a frozen frame for screenshots
+  const scenario = window.__HERD_SCENARIO;
+  const scenarioNeedsCanvas = scenario && scenario.gameState !== "title";
+
   const canvasRef = useRef(null);
   const gameRef = useRef(null);
   const audioRef = useRef(null);
   const keysRef = useRef(new Set());
   const lastWhistleRef = useRef(null);
   const whistleBtnRef = useRef(null);
-  const [gameState, setGameState] = useState("playing");
-  const [timer, setTimer] = useState(0);
-  const [sheepCount, setSheepCount] = useState(0);
-  const [totalSheep, setTotalSheep] = useState(7);
-  const [activeWhistle, setActiveWhistle] = useState(null);
-  const [showSettings, setShowSettings] = useState(false);
-  const [nameChars, setNameChars] = useState([0, 0, 0]); // indices into A-Z
-  const [nameCursor, setNameCursor] = useState(0);
-  const [lastScore, setLastScore] = useState(null); // {name, time} after saving
+  const [gameState, setGameState] = useState(
+    scenario ? (scenarioNeedsCanvas ? "playing" : scenario.gameState) : "playing"
+  );
+  const [timer, setTimer] = useState(scenario?.timer ?? 0);
+  const [sheepCount, setSheepCount] = useState(scenario?.sheepCount ?? 0);
+  const [totalSheep, setTotalSheep] = useState(scenario?.totalSheep ?? 7);
+  const [activeWhistle, setActiveWhistle] = useState(scenario?.activeWhistle ?? null);
+  const [showSettings, setShowSettings] = useState(scenario?.showSettings ?? false);
+  const [nameChars, setNameChars] = useState(scenario?.nameChars ?? [0, 0, 0]);
+  const [nameCursor, setNameCursor] = useState(scenario?.nameCursor ?? 0);
+  const [lastScore, setLastScore] = useState(scenario?.lastScore ?? null);
 
   const ensureAudio = useCallback(() => {
     if (!audioRef.current) audioRef.current = new (window.AudioContext || window.webkitAudioContext)();
@@ -111,8 +119,26 @@ function SheepHerdingGame() {
     setNameChars([0, 0, 0]); setNameCursor(0); setLastScore(null);
   }, [totalSheep]);
 
-  // Start a game immediately on first load
-  useEffect(() => { initGame(7); }, []);
+  // Start a game immediately on first load (or set up scenario state)
+  useEffect(() => {
+    if (scenario) {
+      const count = scenario.totalSheep || 7;
+      gameRef.current = {
+        sheep: createSheep(count), dog: createDog(),
+        tick: 100, won: false, winDelay: 0, started: true, particles: [],
+        grass: Array.from({ length: 500 }, () => ({
+          x: Math.floor(FENCE_L + Math.random() * (FENCE_R - FENCE_L)),
+          y: Math.floor(FENCE_T + Math.random() * (FENCE_B - FENCE_T)),
+          shade: Math.floor(Math.random() * 3),
+        })),
+        clusters: [], numSheep: count,
+      };
+      if (scenario.activeWhistle) whistleBtnRef.current = scenario.activeWhistle;
+      if (!scenarioNeedsCanvas) window.__HERD_READY = true;
+      return;
+    }
+    initGame(7);
+  }, []);
 
   useEffect(() => {
     const down = (e) => {
@@ -313,6 +339,16 @@ function SheepHerdingGame() {
         c.fillRect(Math.floor(p.x), Math.floor(p.y), Math.ceil(p.size), Math.ceil(p.size));
       });
       c.globalAlpha = 1;
+    }
+
+    // Scenario mode: render one frame, switch to target state, signal ready
+    if (scenario) {
+      render(ctx);
+      if (scenarioNeedsCanvas && scenario.gameState !== "playing") {
+        setGameState(scenario.gameState);
+      }
+      window.__HERD_READY = true;
+      return;
     }
 
     function loop(now) {
@@ -563,17 +599,18 @@ function SheepHerdingGame() {
           <div style={{
             position: "absolute", inset: 0, display: "flex", flexDirection: "column",
             alignItems: "center", justifyContent: "center", background: "rgba(10, 16, 5, 0.88)", lineHeight: "normal",
+            padding: "8px 0",
           }}>
-            <div style={{ color: "#ffd740", fontSize: 24, fontWeight: "bold", letterSpacing: 4, marginBottom: 4 }}>ALL PENNED!</div>
-            <div style={{ color: "#a0b878", fontSize: 15, marginBottom: 3 }}>{totalSheep} sheep — {fmtTime(timer)}</div>
-            <div style={{ color: "#8a9868", fontSize: 10, marginBottom: 10 }}>
+            <div style={{ color: "#ffd740", fontSize: 20, fontWeight: "bold", letterSpacing: 4, marginBottom: 2 }}>ALL PENNED!</div>
+            <div style={{ color: "#a0b878", fontSize: 13, marginBottom: 2 }}>{totalSheep} sheep — {fmtTime(timer)}</div>
+            <div style={{ color: "#8a9868", fontSize: 10, marginBottom: 6 }}>
               {timer < 25 ? "Lightning fast!" : timer < 45 ? "Sharp herding!" : timer < 90 ? "Well done!" : "Patience pays off!"}
             </div>
             {(() => {
               const display = scores.length > 0 ? scores : [null];
               return (
-              <div style={{ marginBottom: 10, minWidth: 160 }}>
-                <div style={{ color: "#8a9868", fontSize: 9, textAlign: "center", marginBottom: 4, letterSpacing: 2 }}>TOP SCORES</div>
+              <div style={{ marginBottom: 6, minWidth: 160 }}>
+                <div style={{ color: "#8a9868", fontSize: 9, textAlign: "center", marginBottom: 3, letterSpacing: 2 }}>TOP SCORES</div>
                 {display.map((s, i) => {
                   const isThis = s && lastScore && s.name === lastScore.name && s.time === lastScore.time;
                   return (
@@ -591,16 +628,16 @@ function SheepHerdingGame() {
             <div style={{ display: "flex", gap: 8 }}>
               <button onClick={() => initGame()} style={{
                 background: "#3a5820", color: "#d0dca8", border: "2px solid #5a7a38",
-                padding: "8px 24px", fontSize: 12, fontFamily: "'Courier New', monospace",
+                padding: "6px 20px", fontSize: 12, fontFamily: "'Courier New', monospace",
                 cursor: "pointer", letterSpacing: 2, borderRadius: 2,
               }}>AGAIN</button>
               <button onClick={() => setGameState("title")} style={{
                 background: "#1e2a12", color: "#94a870", border: "2px solid #3a4a20",
-                padding: "8px 24px", fontSize: 12, fontFamily: "'Courier New', monospace",
+                padding: "6px 20px", fontSize: 12, fontFamily: "'Courier New', monospace",
                 cursor: "pointer", letterSpacing: 2, borderRadius: 2,
               }}>MENU</button>
             </div>
-            <a href="https://jkershaw.com" target="_blank" rel="noopener noreferrer" style={{ color: "#6a7848", fontSize: 9, marginTop: 10, textDecoration: "none" }}>jkershaw.com</a>
+            <a href="https://jkershaw.com" target="_blank" rel="noopener noreferrer" style={{ color: "#6a7848", fontSize: 9, marginTop: 6, textDecoration: "none" }}>jkershaw.com</a>
           </div>);
         })()}
       </div>

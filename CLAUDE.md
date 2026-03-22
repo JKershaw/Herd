@@ -65,7 +65,7 @@ Covers: math utilities, fence/wall collision, pen detection, union-find clusteri
 
 ## Screenshots (Playwright)
 
-`screenshot.mjs` captures title, playing, and herding states at both viewports. It inlines `app.jsx` and local vendor files so Chromium needs zero network access.
+Scenario-based screenshot system. Each scenario in `screenshots/scenarios.mjs` declares a UI state to capture — no gameplay interaction needed. The runner injects state via `window.__HERD_SCENARIO`, renders a frozen frame, and captures the result.
 
 ```bash
 # One-time: download vendor files
@@ -74,12 +74,40 @@ curl -sL https://unpkg.com/react@18/umd/react.production.min.js -o vendor/react.
 curl -sL https://unpkg.com/react-dom@18/umd/react-dom.production.min.js -o vendor/react-dom.production.min.js
 curl -sL https://unpkg.com/@babel/standalone/babel.min.js -o vendor/babel.min.js
 
-# Capture screenshots
+# Capture all screenshots
 npx playwright install chromium
-node screenshot.mjs
+npm run screenshots
+
+# Filter by name pattern
+node screenshot.mjs title
 ```
 
-Viewports: Mobile `375x812`, Desktop `1280x800`. Screenshots (`*.png`) are gitignored.
+### Adding a scenario
+
+Add an object to `screenshots/scenarios.mjs`:
+
+```js
+{
+  name: "my-state",              // → screenshots/my-state-desktop.png, my-state-mobile.png
+  description: "What this shows",
+  state: {                       // overrides SheepHerdingGame useState defaults
+    gameState: "playing",        // "title" | "playing" | "won" | "enterName"
+    totalSheep: 7, timer: 0, sheepCount: 0,
+    activeWhistle: null,         // "comebye" | "away" | "walkup" | null
+    showSettings: false,
+    nameChars: [0, 0, 0], nameCursor: 0,
+    lastScore: null,
+    scores: { 7: [{name, time}] }, // optional: overrides getScores()
+  setup: async (page) => {},     // optional: Playwright interactions after mount
+  viewports: ["desktop", "mobile"], // optional: default is both
+}
+```
+
+Viewports: Mobile `375x812`, Desktop `1280x800`. Screenshots in `screenshots/` are gitignored.
+
+### Scenario mode in app.jsx
+
+When `window.__HERD_SCENARIO` is set, the component uses its values as initial state, renders one canvas frame, then freezes (no game loop). This is transparent to normal gameplay — the flag is only set by the screenshot runner.
 
 ## Style conventions
 

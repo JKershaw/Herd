@@ -599,17 +599,18 @@ function SheepHerdingGame() {
           <div style={{
             position: "absolute", inset: 0, display: "flex", flexDirection: "column",
             alignItems: "center", justifyContent: "center", background: "rgba(10, 16, 5, 0.88)", lineHeight: "normal",
+            padding: "8px 0",
           }}>
-            <div style={{ color: "#ffd740", fontSize: 24, fontWeight: "bold", letterSpacing: 4, marginBottom: 4 }}>ALL PENNED!</div>
-            <div style={{ color: "#a0b878", fontSize: 15, marginBottom: 3 }}>{totalSheep} sheep — {fmtTime(timer)}</div>
-            <div style={{ color: "#8a9868", fontSize: 10, marginBottom: 10 }}>
+            <div style={{ color: "#ffd740", fontSize: 20, fontWeight: "bold", letterSpacing: 4, marginBottom: 2 }}>ALL PENNED!</div>
+            <div style={{ color: "#a0b878", fontSize: 13, marginBottom: 2 }}>{totalSheep} sheep — {fmtTime(timer)}</div>
+            <div style={{ color: "#8a9868", fontSize: 10, marginBottom: 6 }}>
               {timer < 25 ? "Lightning fast!" : timer < 45 ? "Sharp herding!" : timer < 90 ? "Well done!" : "Patience pays off!"}
             </div>
             {(() => {
               const display = scores.length > 0 ? scores : [null];
               return (
-              <div style={{ marginBottom: 10, minWidth: 160 }}>
-                <div style={{ color: "#8a9868", fontSize: 9, textAlign: "center", marginBottom: 4, letterSpacing: 2 }}>TOP SCORES</div>
+              <div style={{ marginBottom: 6, minWidth: 160 }}>
+                <div style={{ color: "#8a9868", fontSize: 9, textAlign: "center", marginBottom: 3, letterSpacing: 2 }}>TOP SCORES</div>
                 {display.map((s, i) => {
                   const isThis = s && lastScore && s.name === lastScore.name && s.time === lastScore.time;
                   return (
@@ -627,16 +628,16 @@ function SheepHerdingGame() {
             <div style={{ display: "flex", gap: 8 }}>
               <button onClick={() => initGame()} style={{
                 background: "#3a5820", color: "#d0dca8", border: "2px solid #5a7a38",
-                padding: "8px 24px", fontSize: 12, fontFamily: "'Courier New', monospace",
+                padding: "6px 20px", fontSize: 12, fontFamily: "'Courier New', monospace",
                 cursor: "pointer", letterSpacing: 2, borderRadius: 2,
               }}>AGAIN</button>
               <button onClick={() => setGameState("title")} style={{
                 background: "#1e2a12", color: "#94a870", border: "2px solid #3a4a20",
-                padding: "8px 24px", fontSize: 12, fontFamily: "'Courier New', monospace",
+                padding: "6px 20px", fontSize: 12, fontFamily: "'Courier New', monospace",
                 cursor: "pointer", letterSpacing: 2, borderRadius: 2,
               }}>MENU</button>
             </div>
-            <a href="https://jkershaw.com" target="_blank" rel="noopener noreferrer" style={{ color: "#6a7848", fontSize: 9, marginTop: 10, textDecoration: "none" }}>jkershaw.com</a>
+            <a href="https://jkershaw.com" target="_blank" rel="noopener noreferrer" style={{ color: "#6a7848", fontSize: 9, marginTop: 6, textDecoration: "none" }}>jkershaw.com</a>
           </div>);
         })()}
       </div>

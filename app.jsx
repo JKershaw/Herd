@@ -79,7 +79,7 @@ function SheepHerdingGame() {
   const keysRef = useRef(new Set());
   const lastWhistleRef = useRef(null);
   const whistleBtnRef = useRef(null);
-  const [gameState, setGameState] = useState("title");
+  const [gameState, setGameState] = useState("playing");
   const [timer, setTimer] = useState(0);
   const [sheepCount, setSheepCount] = useState(0);
   const [totalSheep, setTotalSheep] = useState(7);
@@ -110,6 +110,9 @@ function SheepHerdingGame() {
     setTimer(0); setSheepCount(0); setGameState("playing"); setShowSettings(false);
     setNameChars([0, 0, 0]); setNameCursor(0); setLastScore(null);
   }, [totalSheep]);
+
+  // Start a game immediately on first load
+  useEffect(() => { initGame(7); }, []);
 
   useEffect(() => {
     const down = (e) => {

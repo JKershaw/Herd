@@ -465,19 +465,20 @@ function SheepHerdingGame() {
           </div>
           {(() => {
             const scores = getScores(totalSheep);
-            return scores.length > 0 && (
+            const display = scores.length > 0 ? scores : [null];
+            return (
               <div style={{ marginBottom: 10, minWidth: 160 }}>
                 <div style={{ color: "#8a9868", fontSize: 9, textAlign: "center", marginBottom: 4, letterSpacing: 2 }}>
                   TOP SCORES — {totalSheep} SHEEP
                 </div>
-                {scores.map((s, i) => (
+                {display.map((s, i) => (
                   <div key={i} style={{
                     display: "flex", justifyContent: "space-between", gap: 12,
-                    color: "#94a870", fontSize: 11,
+                    color: s ? "#94a870" : "#5a6838", fontSize: 11,
                     fontFamily: "'Courier New', monospace", padding: "1px 0",
                   }}>
-                    <span>{i + 1}. {s.name}</span>
-                    <span>{fmtTime(s.time)}</span>
+                    <span>{i + 1}. {s ? s.name : "---"}</span>
+                    <span>{s ? fmtTime(s.time) : "-:--"}</span>
                   </div>
                 ))}
               </div>
@@ -560,23 +561,25 @@ function SheepHerdingGame() {
             <div style={{ color: "#8a9868", fontSize: 10, marginBottom: 10 }}>
               {timer < 25 ? "Lightning fast!" : timer < 45 ? "Sharp herding!" : timer < 90 ? "Well done!" : "Patience pays off!"}
             </div>
-            {scores.length > 0 && (
+            {(() => {
+              const display = scores.length > 0 ? scores : [null];
+              return (
               <div style={{ marginBottom: 10, minWidth: 160 }}>
                 <div style={{ color: "#8a9868", fontSize: 9, textAlign: "center", marginBottom: 4, letterSpacing: 2 }}>TOP SCORES</div>
-                {scores.map((s, i) => {
-                  const isThis = lastScore && s.name === lastScore.name && s.time === lastScore.time;
+                {display.map((s, i) => {
+                  const isThis = s && lastScore && s.name === lastScore.name && s.time === lastScore.time;
                   return (
                   <div key={i} style={{
                     display: "flex", justifyContent: "space-between", gap: 12,
-                    color: isThis ? "#ffd740" : "#94a870", fontSize: 11,
+                    color: isThis ? "#ffd740" : s ? "#94a870" : "#5a6838", fontSize: 11,
                     fontFamily: "'Courier New', monospace", padding: "1px 0",
                   }}>
-                    <span>{i + 1}. {s.name}</span>
-                    <span>{fmtTime(s.time)}</span>
+                    <span>{i + 1}. {s ? s.name : "---"}</span>
+                    <span>{s ? fmtTime(s.time) : "-:--"}</span>
                   </div>);
                 })}
-              </div>
-            )}
+              </div>);
+            })()}
             <div style={{ display: "flex", gap: 8 }}>
               <button onClick={() => initGame()} style={{
                 background: "#3a5820", color: "#d0dca8", border: "2px solid #5a7a38",

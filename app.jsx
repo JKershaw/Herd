@@ -523,10 +523,10 @@ function SheepHerdingGame() {
       fontFamily: "'Courier New', monospace",
       padding: "6px", boxSizing: "border-box", userSelect: "none",
     }}>
-      <div style={{
+      {gameState !== "title" && (<div style={{
         display: "flex", alignItems: "center", justifyContent: "center",
         gap: 12, marginBottom: 3, width: "100%", maxWidth: W * 3 + 4,
-        position: "relative", padding: "0 32px",
+        position: "relative", padding: "0 32px", zIndex: 20,
       }}>
         <span style={{ color: "#c8d8a0", fontSize: 15, fontWeight: "bold", fontVariantNumeric: "tabular-nums" }}>{fmtTime(timer)}</span>
         <span style={{ color: "#a0b878", fontSize: 12, letterSpacing: 1, fontWeight: "bold" }}>HERD</span>
@@ -572,7 +572,7 @@ function SheepHerdingGame() {
             )}
           </div>
         )}
-      </div>
+      </div>)}
 
       {gameState === "title" && (
         <div style={{

@@ -96,7 +96,23 @@ async function run() {
         // Run optional setup (e.g. interactions that can't be expressed as state)
         if (scenario.setup) await scenario.setup(page);
 
-        await page.screenshot({ path: outPath });
+        if (scenario.canvasOnly) {
+          const spriteClip = await page.evaluate(() => window.__SPRITE_CLIP);
+          if (spriteClip) {
+            const box = await page.locator("canvas").boundingBox();
+            const scale = box.width / 280;
+            await page.screenshot({ path: outPath, clip: {
+              x: box.x + spriteClip.x * scale,
+              y: box.y + spriteClip.y * scale,
+              width: spriteClip.w * scale,
+              height: spriteClip.h * scale,
+            }});
+          } else {
+            await page.locator("canvas").screenshot({ path: outPath });
+          }
+        } else {
+          await page.screenshot({ path: outPath });
+        }
         await context.close();
 
         const ms = Math.round(performance.now() - t0);

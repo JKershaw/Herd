@@ -205,6 +205,108 @@ function SheepHerdingGame() {
 
     function px(c, x, y, w, h, col) { c.fillStyle = col; c.fillRect(Math.floor(x), Math.floor(y), w, h); }
 
+    function drawSheep(c, s) {
+      const bx = Math.floor(s.x), by = Math.floor(s.y);
+      const wb = s.isGrazing ? Math.sin(s.wobble * 0.5) * 0.5 : Math.sin(s.wobble) * 0.3;
+
+      c.fillStyle = "rgba(0,0,0,0.13)"; c.fillRect(bx - 2, by + 3, 6, 2);
+
+      const panicTint = s.panic > 0.3;
+      c.fillStyle = s.settled ? "#ddddd0" : panicTint ? "#f0e0d0" : "#f0f0e0";
+      c.fillRect(bx - 2, by - 2 + wb, 5, 5);
+      c.fillRect(bx - 1, by - 3 + wb, 3, 1);
+      c.fillRect(bx - 1, by + 3 + wb, 3, 1);
+      c.fillStyle = s.settled ? "#e8e8dc" : panicTint ? "#f8ece0" : "#fafaf0";
+      c.fillRect(bx - 1, by - 2 + wb, 3, 2);
+
+      const hx = bx + Math.cos(s.headDir) * 3.5, hy = by + Math.sin(s.headDir) * 3.5;
+      c.fillStyle = "#b0a898"; c.fillRect(Math.floor(hx) - 1, Math.floor(hy) - 1, 3, 2);
+      c.fillStyle = "#333"; c.fillRect(Math.floor(hx), Math.floor(hy) - 1, 1, 1);
+      c.fillStyle = "#777"; c.fillRect(bx - 1, by + 3, 1, 2); c.fillRect(bx + 1, by + 3, 1, 2);
+
+      if (s.settled) {
+        c.fillStyle = "#4CAF50";
+        c.fillRect(bx - 1, by - 5, 1, 1); c.fillRect(bx, by - 6, 1, 2); c.fillRect(bx + 1, by - 7, 1, 1);
+      }
+    }
+
+    function drawDog(c, d, tick, whistleActive) {
+      const dx = Math.floor(d.x), dy = Math.floor(d.y);
+      const dir = d.renderDir;
+
+      c.fillStyle = "rgba(0,0,0,0.18)"; c.fillRect(dx - 3, dy + 2, 7, 2);
+
+      // Tail
+      const tw = Math.sin(d.tailWag) * 0.5;
+      const tailD = dir + Math.PI + tw;
+      const tailX = dx + Math.cos(tailD) * 5, tailY = dy + Math.sin(tailD) * 5;
+      c.fillStyle = "#1a1a1a"; c.fillRect(Math.floor(tailX), Math.floor(tailY), 2, 1);
+      c.fillStyle = "#eee8dd"; c.fillRect(Math.floor(tailX + Math.cos(tailD) * 1.5), Math.floor(tailY + Math.sin(tailD) * 1.5), 1, 1);
+
+      // Body
+      c.fillStyle = "#1a1a1a";
+      c.fillRect(dx - 2, dy - 2, 5, 4); c.fillRect(dx - 3, dy - 1, 7, 2);
+      c.fillStyle = "#eee8dd";
+      c.fillRect(Math.floor(dx + Math.cos(dir) * 1) - 1, Math.floor(dy + Math.sin(dir) * 1), 3, 2);
+
+      // Head
+      const hx2 = dx + Math.cos(dir) * 4.5, hy2 = dy + Math.sin(dir) * 4.5;
+      c.fillStyle = "#1a1a1a"; c.fillRect(Math.floor(hx2) - 2, Math.floor(hy2) - 1, 4, 3);
+      c.fillStyle = "#eee8dd"; c.fillRect(Math.floor(hx2), Math.floor(hy2) - 1, 1, 3);
+      const snX = hx2 + Math.cos(dir) * 2, snY = hy2 + Math.sin(dir) * 2;
+      c.fillStyle = "#eee8dd"; c.fillRect(Math.floor(snX), Math.floor(snY), 2, 1);
+      c.fillStyle = "#222"; c.fillRect(Math.floor(snX) + 1, Math.floor(snY), 1, 1);
+      c.fillStyle = "#d4a040";
+      c.fillRect(Math.floor(hx2) - 1, Math.floor(hy2) - 1, 1, 1);
+      c.fillRect(Math.floor(hx2) + 1, Math.floor(hy2) - 1, 1, 1);
+      c.fillStyle = "#111";
+      c.fillRect(Math.floor(hx2) - 2, Math.floor(hy2) - 2, 1, 2);
+      c.fillRect(Math.floor(hx2) + 2, Math.floor(hy2) - 2, 1, 2);
+
+      if (whistleActive) {
+        c.fillStyle = "rgba(255,255,200,0.22)";
+        c.beginPath(); c.arc(dx, dy - 7, 4 + Math.sin(tick * 0.2) * 1.5, 0, Math.PI * 2); c.fill();
+      }
+      if (!whistleActive && d.idleTime > 0.8 && d.idleTime < 1.5) {
+        const a = 0.3 * Math.min(1, (d.idleTime - 0.8) / 0.3);
+        c.fillStyle = `rgba(200,200,150,${a})`;
+        c.fillRect(Math.floor(dx + Math.cos(d.lookDir) * 9), Math.floor(dy + Math.sin(d.lookDir) * 9), 2, 2);
+      }
+    }
+
+    function renderSprites(c, sprites) {
+      const cellW = 48, cellH = 36;
+      const cols = Math.min(sprites.length, 5);
+      const rows = Math.ceil(sprites.length / cols);
+      const gridW = cols * cellW, gridH = rows * cellH;
+      const ox = Math.floor((W - gridW) / 2);
+      const oy = Math.floor((H - gridH) / 2);
+
+      c.fillStyle = "#1a2410"; c.fillRect(0, 0, W, H);
+
+      sprites.forEach((sp, i) => {
+        const col = i % cols, row = Math.floor(i / cols);
+        const cx = ox + col * cellW + cellW / 2;
+        const cy = oy + row * cellH + cellH / 2 - 4;
+
+        if (sp.type === "sheep") {
+          drawSheep(c, { x: cx, y: cy, wobble: 0, isGrazing: false, panic: 0, settled: false, headDir: 0, ...sp.overrides });
+        } else if (sp.type === "dog") {
+          drawDog(c, { x: cx, y: cy, vx: 0, vy: 0, renderDir: 0, tailWag: 0, idleTime: 0, lookDir: 0, ...sp.overrides },
+            sp.tick || 100, sp.whistleActive || false);
+        }
+
+        if (sp.label) {
+          c.fillStyle = "#8a9868"; c.font = "7px 'Courier New'"; c.textAlign = "center";
+          c.fillText(sp.label, cx, cy + 18);
+        }
+      });
+
+      // Expose clip bounds for screenshot cropping
+      const pad = 4;
+      window.__SPRITE_CLIP = { x: ox - pad, y: oy - pad, w: gridW + pad * 2, h: gridH + pad * 2 };
+    }
+
     function render(c) {
       const g = gameRef.current;
       c.fillStyle = "#3a7d28"; c.fillRect(0, 0, W, H);
@@ -260,77 +362,10 @@ function SheepHerdingGame() {
 
       // Sheep sorted by Y for depth
       const sorted = [...g.sheep].sort((a, b) => a.y - b.y);
-      sorted.forEach(s => {
-        const bx = Math.floor(s.x), by = Math.floor(s.y);
-        const wb = s.isGrazing ? Math.sin(s.wobble * 0.5) * 0.5 : Math.sin(s.wobble) * 0.3;
-
-        c.fillStyle = "rgba(0,0,0,0.13)"; c.fillRect(bx - 2, by + 3, 6, 2);
-
-        // Tint reddish when panicking
-        const panicTint = s.panic > 0.3;
-        c.fillStyle = s.settled ? "#ddddd0" : panicTint ? "#f0e0d0" : "#f0f0e0";
-        c.fillRect(bx - 2, by - 2 + wb, 5, 5);
-        c.fillRect(bx - 1, by - 3 + wb, 3, 1);
-        c.fillRect(bx - 1, by + 3 + wb, 3, 1);
-        c.fillStyle = s.settled ? "#e8e8dc" : panicTint ? "#f8ece0" : "#fafaf0";
-        c.fillRect(bx - 1, by - 2 + wb, 3, 2);
-
-        const hx = bx + Math.cos(s.headDir) * 3.5, hy = by + Math.sin(s.headDir) * 3.5;
-        c.fillStyle = "#b0a898"; c.fillRect(Math.floor(hx) - 1, Math.floor(hy) - 1, 3, 2);
-        c.fillStyle = "#333"; c.fillRect(Math.floor(hx), Math.floor(hy) - 1, 1, 1);
-        c.fillStyle = "#777"; c.fillRect(bx - 1, by + 3, 1, 2); c.fillRect(bx + 1, by + 3, 1, 2);
-
-        if (s.settled) {
-          c.fillStyle = "#4CAF50";
-          c.fillRect(bx - 1, by - 5, 1, 1); c.fillRect(bx, by - 6, 1, 2); c.fillRect(bx + 1, by - 7, 1, 1);
-        }
-      });
+      sorted.forEach(s => drawSheep(c, s));
 
       // Dog collie
-      const d = g.dog;
-      const dx = Math.floor(d.x), dy = Math.floor(d.y);
-      const dSpd = Math.sqrt(d.vx * d.vx + d.vy * d.vy);
-      const dir = d.renderDir;
-
-      c.fillStyle = "rgba(0,0,0,0.18)"; c.fillRect(dx - 3, dy + 2, 7, 2);
-
-      // Tail
-      const tw = Math.sin(d.tailWag) * 0.5;
-      const tailD = dir + Math.PI + tw;
-      const tailX = dx + Math.cos(tailD) * 5, tailY = dy + Math.sin(tailD) * 5;
-      c.fillStyle = "#1a1a1a"; c.fillRect(Math.floor(tailX), Math.floor(tailY), 2, 1);
-      c.fillStyle = "#eee8dd"; c.fillRect(Math.floor(tailX + Math.cos(tailD) * 1.5), Math.floor(tailY + Math.sin(tailD) * 1.5), 1, 1);
-
-      // Body
-      c.fillStyle = "#1a1a1a";
-      c.fillRect(dx - 2, dy - 2, 5, 4); c.fillRect(dx - 3, dy - 1, 7, 2);
-      c.fillStyle = "#eee8dd";
-      c.fillRect(Math.floor(dx + Math.cos(dir) * 1) - 1, Math.floor(dy + Math.sin(dir) * 1), 3, 2);
-
-      // Head
-      const hx2 = dx + Math.cos(dir) * 4.5, hy2 = dy + Math.sin(dir) * 4.5;
-      c.fillStyle = "#1a1a1a"; c.fillRect(Math.floor(hx2) - 2, Math.floor(hy2) - 1, 4, 3);
-      c.fillStyle = "#eee8dd"; c.fillRect(Math.floor(hx2), Math.floor(hy2) - 1, 1, 3);
-      const snX = hx2 + Math.cos(dir) * 2, snY = hy2 + Math.sin(dir) * 2;
-      c.fillStyle = "#eee8dd"; c.fillRect(Math.floor(snX), Math.floor(snY), 2, 1);
-      c.fillStyle = "#222"; c.fillRect(Math.floor(snX) + 1, Math.floor(snY), 1, 1);
-      c.fillStyle = "#d4a040";
-      c.fillRect(Math.floor(hx2) - 1, Math.floor(hy2) - 1, 1, 1);
-      c.fillRect(Math.floor(hx2) + 1, Math.floor(hy2) - 1, 1, 1);
-      c.fillStyle = "#111";
-      c.fillRect(Math.floor(hx2) - 2, Math.floor(hy2) - 2, 1, 2);
-      c.fillRect(Math.floor(hx2) + 2, Math.floor(hy2) - 2, 1, 2);
-
-      const wCmd = getWhistle();
-      if (wCmd) {
-        c.fillStyle = "rgba(255,255,200,0.22)";
-        c.beginPath(); c.arc(dx, dy - 7, 4 + Math.sin(g.tick * 0.2) * 1.5, 0, Math.PI * 2); c.fill();
-      }
-      if (!wCmd && d.idleTime > 0.8 && d.idleTime < 1.5) {
-        const a = 0.3 * Math.min(1, (d.idleTime - 0.8) / 0.3);
-        c.fillStyle = `rgba(200,200,150,${a})`;
-        c.fillRect(Math.floor(dx + Math.cos(d.lookDir) * 9), Math.floor(dy + Math.sin(d.lookDir) * 9), 2, 2);
-      }
+      drawDog(c, g.dog, g.tick, !!getWhistle());
 
       // Particles
       g.particles.forEach(p => {
@@ -343,7 +378,11 @@ function SheepHerdingGame() {
 
     // Scenario mode: render one frame, switch to target state, signal ready
     if (scenario) {
-      render(ctx);
+      if (scenario.sprites) {
+        renderSprites(ctx, scenario.sprites);
+      } else {
+        render(ctx);
+      }
       if (scenarioNeedsCanvas && scenario.gameState !== "playing") {
         setGameState(scenario.gameState);
       }

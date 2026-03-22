@@ -100,8 +100,31 @@ Add an object to `screenshots/scenarios.mjs`:
     scores: { 7: [{name, time}] }, // optional: overrides getScores()
   setup: async (page) => {},     // optional: Playwright interactions after mount
   viewports: ["desktop", "mobile"], // optional: default is both
+  canvasOnly: false,             // optional: capture only the canvas element
 }
 ```
+
+#### Sprite sheets
+
+Use `state.sprites` to render individual characters on a clean background instead of the normal game field. Combine with `canvasOnly: true` for clean output.
+
+```js
+{
+  name: "sprites-sheep",
+  canvasOnly: true,
+  state: {
+    gameState: "playing",
+    sprites: [
+      { type: "sheep", label: "Walking", overrides: { headDir: 0, wobble: 0.8 } },
+      { type: "sheep", label: "Grazing", overrides: { isGrazing: true, wobble: 1.5, headDir: PI / 2 } },
+      // type: "dog" also supported, with whistleActive and tick options
+    ],
+  },
+  viewports: ["desktop"],
+}
+```
+
+Sprites are laid out in an auto-grid (up to 5 columns) with labels. Entity overrides map to the properties on sheep/dog objects (see `createSheep`/`createDog` in `game.js`).
 
 Viewports: Mobile `375x812`, Desktop `1280x800`. Screenshots in `screenshots/` are gitignored.
 

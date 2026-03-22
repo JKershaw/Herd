@@ -99,7 +99,7 @@ function SheepHerdingGame() {
     const count = n || totalSheep;
     gameRef.current = {
       sheep: createSheep(count), dog: createDog(),
-      tick: 0, won: false, winDelay: 0, particles: [],
+      tick: 0, won: false, winDelay: 0, started: false, particles: [],
       grass: Array.from({ length: 500 }, () => ({
         x: Math.floor(FENCE_L + Math.random() * (FENCE_R - FENCE_L)),
         y: Math.floor(FENCE_T + Math.random() * (FENCE_B - FENCE_T)),
@@ -329,10 +329,15 @@ function SheepHerdingGame() {
       }
 
       g.tick++;
-      timerAccum += dt;
-      if (timerAccum >= 1) { timerAccum -= 1; setTimer(t => t + 1); }
-
       const cmd = getWhistle();
+
+      if (!g.started && cmd) g.started = true;
+
+      if (g.started) {
+        timerAccum += dt;
+        if (timerAccum >= 1) { timerAccum -= 1; setTimer(t => t + 1); }
+      }
+
       if (cmd && cmd !== lastWhistleRef.current) {
         const ac = ensureAudio();
         if (cmd === "comebye") makeWhistle(ac, 780, 0.35);
@@ -342,8 +347,8 @@ function SheepHerdingGame() {
       lastWhistleRef.current = cmd;
       setActiveWhistle(cmd);
 
-      localUpdateDog(g.dog, g.sheep, cmd, dt);
-      localUpdateSheep(g.sheep, g.dog, dt);
+      if (g.started) localUpdateDog(g.dog, g.sheep, cmd, dt);
+      localUpdateSheep(g.sheep, g.started ? g.dog : { x: -999, y: -999 }, dt);
       localUpdateParticles(dt);
 
       const settled = g.sheep.filter(s => s.settled).length;

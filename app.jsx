@@ -2,6 +2,27 @@ const { useState, useEffect, useRef, useCallback } = React;
 
 // Constants and pure game functions are loaded from game.js as globals.
 
+// === High scores (localStorage, top 5 per sheep count) ===
+const HS_KEY = "herd-highscores";
+function getScores(n) {
+  try { return (JSON.parse(localStorage.getItem(HS_KEY)) || {})[n] || []; }
+  catch { return []; }
+}
+function saveScore(n, name, time) {
+  let all;
+  try { all = JSON.parse(localStorage.getItem(HS_KEY)) || {}; } catch { all = {}; }
+  const list = all[n] || [];
+  list.push({ name: name.toUpperCase(), time });
+  list.sort((a, b) => a.time - b.time);
+  all[n] = list.slice(0, 5);
+  localStorage.setItem(HS_KEY, JSON.stringify(all));
+  return all[n];
+}
+function qualifies(n, time) {
+  const list = getScores(n);
+  return list.length < 5 || time < list[list.length - 1].time;
+}
+
 function makeWhistle(ctx, freq, dur, sweep = 1.3) {
   if (!ctx) return;
   try {
@@ -48,6 +69,9 @@ function winFanfare(ctx) {
   } catch (e) {}
 }
 
+const isLocal = location.hostname === "localhost" || location.hostname === "127.0.0.1";
+const SHEEP_OPTIONS = isLocal ? [1, 5, 7, 10, 15] : [5, 7, 10, 15];
+
 function SheepHerdingGame() {
   const canvasRef = useRef(null);
   const gameRef = useRef(null);
@@ -61,6 +85,9 @@ function SheepHerdingGame() {
   const [totalSheep, setTotalSheep] = useState(7);
   const [activeWhistle, setActiveWhistle] = useState(null);
   const [showSettings, setShowSettings] = useState(false);
+  const [nameChars, setNameChars] = useState([0, 0, 0]); // indices into A-Z
+  const [nameCursor, setNameCursor] = useState(0);
+  const [lastScore, setLastScore] = useState(null); // {name, time} after saving
 
   const ensureAudio = useCallback(() => {
     if (!audioRef.current) audioRef.current = new (window.AudioContext || window.webkitAudioContext)();
@@ -81,19 +108,33 @@ function SheepHerdingGame() {
       clusters: [], numSheep: count,
     };
     setTimer(0); setSheepCount(0); setGameState("playing"); setShowSettings(false);
+    setNameChars([0, 0, 0]); setNameCursor(0); setLastScore(null);
   }, [totalSheep]);
 
   useEffect(() => {
     const down = (e) => {
       keysRef.current.add(e.key.toLowerCase());
       if (e.key === " " && gameState === "title") { e.preventDefault(); initGame(); }
-      if (e.key.toLowerCase() === "r" && gameState !== "title") initGame();
+      if (e.key.toLowerCase() === "r" && gameState !== "title" && gameState !== "enterName") initGame();
+      if (gameState === "enterName") {
+        if (e.key === "ArrowUp") { e.preventDefault(); setNameChars(c => { const n = [...c]; n[nameCursor] = (n[nameCursor] - 1 + 26) % 26; return n; }); }
+        if (e.key === "ArrowDown") { e.preventDefault(); setNameChars(c => { const n = [...c]; n[nameCursor] = (n[nameCursor] + 1) % 26; return n; }); }
+        if (e.key === "ArrowLeft") { e.preventDefault(); setNameCursor(c => Math.max(0, c - 1)); }
+        if (e.key === "ArrowRight") { e.preventDefault(); setNameCursor(c => Math.min(2, c + 1)); }
+        if (e.key === "Enter") {
+          const ALPHA = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+          const name = nameChars.map(i => ALPHA[i]).join("");
+          saveScore(totalSheep, name, timer);
+          setLastScore({ name, time: timer });
+          setGameState("won");
+        }
+      }
     };
     const up = (e) => keysRef.current.delete(e.key.toLowerCase());
     window.addEventListener("keydown", down);
     window.addEventListener("keyup", up);
     return () => { window.removeEventListener("keydown", down); window.removeEventListener("keyup", up); };
-  }, [gameState, initGame]);
+  }, [gameState, initGame, nameCursor, nameChars, totalSheep, timer]);
 
   useEffect(() => () => { if (audioRef.current) audioRef.current.close(); }, []);
 
@@ -280,7 +321,7 @@ function SheepHerdingGame() {
         g.winDelay += dt;
         localUpdateParticles(dt);
         render(ctx);
-        if (g.winDelay > 2) setGameState("won");
+        if (g.winDelay > 2) setGameState(qualifies(g.numSheep, g.finalTime) ? "enterName" : "won");
         animId = requestAnimationFrame(loop); return;
       }
 
@@ -305,7 +346,7 @@ function SheepHerdingGame() {
       const settled = g.sheep.filter(s => s.settled).length;
       setSheepCount(settled);
       if (settled === g.numSheep && !g.won) {
-        g.won = true; g.winDelay = 0;
+        g.won = true; g.winDelay = 0; g.finalTime = timer;
         winFanfare(ensureAudio());
         for (let p = 0; p < 50; p++) {
           const a = (p / 50) * Math.PI * 2, r = 30 + Math.random() * 35;
@@ -363,7 +404,7 @@ function SheepHerdingGame() {
               }}>
                 <div style={{ color: "#a0b878", fontSize: 10, marginBottom: 6 }}>SHEEP COUNT</div>
                 <div style={{ display: "flex", gap: 4, marginBottom: 10 }}>
-                  {[5, 7, 10, 15].map(n => (
+                  {SHEEP_OPTIONS.map(n => (
                     <button key={n} onClick={() => { setTotalSheep(n); }} style={{
                       background: n === totalSheep ? "#4a6828" : "#222e14",
                       color: n === totalSheep ? "#d0dca8" : "#8a9868",
@@ -411,7 +452,7 @@ function SheepHerdingGame() {
           </div>
           <div style={{ display: "flex", gap: 6, marginBottom: 12, alignItems: "center" }}>
             <span style={{ color: "#8a9868", fontSize: 10, marginRight: 4 }}>SHEEP:</span>
-            {[5, 7, 10, 15].map(n => (
+            {SHEEP_OPTIONS.map(n => (
               <button key={n} onClick={() => setTotalSheep(n)} style={{
                 background: n === totalSheep ? "#4a6828" : "#1e2a12",
                 color: n === totalSheep ? "#d0dca8" : "#8a9868",
@@ -422,6 +463,26 @@ function SheepHerdingGame() {
               }}>{n}</button>
             ))}
           </div>
+          {(() => {
+            const scores = getScores(totalSheep);
+            return scores.length > 0 && (
+              <div style={{ marginBottom: 10, minWidth: 160 }}>
+                <div style={{ color: "#8a9868", fontSize: 9, textAlign: "center", marginBottom: 4, letterSpacing: 2 }}>
+                  TOP SCORES — {totalSheep} SHEEP
+                </div>
+                {scores.map((s, i) => (
+                  <div key={i} style={{
+                    display: "flex", justifyContent: "space-between", gap: 12,
+                    color: "#94a870", fontSize: 11,
+                    fontFamily: "'Courier New', monospace", padding: "1px 0",
+                  }}>
+                    <span>{i + 1}. {s.name}</span>
+                    <span>{fmtTime(s.time)}</span>
+                  </div>
+                ))}
+              </div>
+            );
+          })()}
           <button onClick={() => initGame()} style={{
             background: "#3a5820", color: "#d0dca8", border: "2px solid #5a7a38",
             padding: "10px 40px", fontSize: 14, fontFamily: "'Courier New', monospace",
@@ -438,16 +499,84 @@ function SheepHerdingGame() {
           aspectRatio: `${W} / ${H}`, imageRendering: "pixelated", display: "block",
         }} />
 
-        {gameState === "won" && (
+        {gameState === "enterName" && (() => {
+          const ALPHA = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+          const spin = (i, dir) => setNameChars(c => { const n = [...c]; n[i] = (n[i] + dir + 26) % 26; return n; });
+          const submitName = () => {
+            const name = nameChars.map(i => ALPHA[i]).join("");
+            const scores = saveScore(totalSheep, name, timer);
+            setLastScore({ name, time: timer });
+            setGameState("won");
+          };
+          return (
+          <div style={{
+            position: "absolute", inset: 0, display: "flex", flexDirection: "column",
+            alignItems: "center", justifyContent: "center", background: "rgba(10, 16, 5, 0.92)", lineHeight: "normal",
+          }}>
+            <div style={{ color: "#ffd740", fontSize: 20, fontWeight: "bold", letterSpacing: 4, marginBottom: 2 }}>ALL PENNED!</div>
+            <div style={{ color: "#a0b878", fontSize: 13, marginBottom: 2 }}>{totalSheep} sheep — {fmtTime(timer)}</div>
+            <div style={{ color: "#ffd740", fontSize: 11, marginBottom: 10 }}>NEW HIGH SCORE!</div>
+            <div style={{ color: "#8a9868", fontSize: 10, marginBottom: 8 }}>ENTER YOUR NAME</div>
+            <div style={{ display: "flex", gap: 6, marginBottom: 10 }}>
+              {nameChars.map((ci, i) => (
+                <div key={i} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 2 }}>
+                  <button onClick={() => spin(i, -1)} style={{
+                    background: "none", border: "1px solid #3a4a20", color: "#a0b878",
+                    fontSize: 14, width: 28, height: 20, cursor: "pointer",
+                    fontFamily: "'Courier New', monospace",
+                  }}>{"\u25B2"}</button>
+                  <div style={{
+                    color: nameCursor === i ? "#ffd740" : "#d0dca8", fontSize: 24, fontWeight: "bold",
+                    fontFamily: "'Courier New', monospace", width: 28, textAlign: "center",
+                    background: nameCursor === i ? "rgba(255,215,64,0.1)" : "none",
+                    border: `1px solid ${nameCursor === i ? "#ffd740" : "#3a4a20"}`,
+                    padding: "2px 0", cursor: "pointer",
+                  }} onClick={() => setNameCursor(i)}>{ALPHA[ci]}</div>
+                  <button onClick={() => spin(i, 1)} style={{
+                    background: "none", border: "1px solid #3a4a20", color: "#a0b878",
+                    fontSize: 14, width: 28, height: 20, cursor: "pointer",
+                    fontFamily: "'Courier New', monospace",
+                  }}>{"\u25BC"}</button>
+                </div>
+              ))}
+            </div>
+            <button onClick={submitName} style={{
+              background: "#3a5820", color: "#d0dca8", border: "2px solid #5a7a38",
+              padding: "8px 30px", fontSize: 12, fontFamily: "'Courier New', monospace",
+              cursor: "pointer", letterSpacing: 2, borderRadius: 2,
+            }}>OK</button>
+          </div>);
+        })()}
+
+        {gameState === "won" && (() => {
+          const scores = getScores(totalSheep);
+          return (
           <div style={{
             position: "absolute", inset: 0, display: "flex", flexDirection: "column",
             alignItems: "center", justifyContent: "center", background: "rgba(10, 16, 5, 0.88)", lineHeight: "normal",
           }}>
             <div style={{ color: "#ffd740", fontSize: 24, fontWeight: "bold", letterSpacing: 4, marginBottom: 4 }}>ALL PENNED!</div>
             <div style={{ color: "#a0b878", fontSize: 15, marginBottom: 3 }}>{totalSheep} sheep — {fmtTime(timer)}</div>
-            <div style={{ color: "#8a9868", fontSize: 10, marginBottom: 14 }}>
+            <div style={{ color: "#8a9868", fontSize: 10, marginBottom: 10 }}>
               {timer < 25 ? "Lightning fast!" : timer < 45 ? "Sharp herding!" : timer < 90 ? "Well done!" : "Patience pays off!"}
             </div>
+            {scores.length > 0 && (
+              <div style={{ marginBottom: 10, minWidth: 160 }}>
+                <div style={{ color: "#8a9868", fontSize: 9, textAlign: "center", marginBottom: 4, letterSpacing: 2 }}>TOP SCORES</div>
+                {scores.map((s, i) => {
+                  const isThis = lastScore && s.name === lastScore.name && s.time === lastScore.time;
+                  return (
+                  <div key={i} style={{
+                    display: "flex", justifyContent: "space-between", gap: 12,
+                    color: isThis ? "#ffd740" : "#94a870", fontSize: 11,
+                    fontFamily: "'Courier New', monospace", padding: "1px 0",
+                  }}>
+                    <span>{i + 1}. {s.name}</span>
+                    <span>{fmtTime(s.time)}</span>
+                  </div>);
+                })}
+              </div>
+            )}
             <div style={{ display: "flex", gap: 8 }}>
               <button onClick={() => initGame()} style={{
                 background: "#3a5820", color: "#d0dca8", border: "2px solid #5a7a38",
@@ -460,8 +589,8 @@ function SheepHerdingGame() {
                 cursor: "pointer", letterSpacing: 2, borderRadius: 2,
               }}>MENU</button>
             </div>
-          </div>
-        )}
+          </div>);
+        })()}
       </div>
       )}
 

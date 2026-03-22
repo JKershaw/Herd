@@ -97,8 +97,7 @@ Add an object to `screenshots/scenarios.mjs`:
     showSettings: false,
     nameChars: [0, 0, 0], nameCursor: 0,
     lastScore: null,
-  },
-  localStorage: {},              // optional: injected before mount
+    scores: { 7: [{name, time}] }, // optional: overrides getScores()
   setup: async (page) => {},     // optional: Playwright interactions after mount
   viewports: ["desktop", "mobile"], // optional: default is both
 }

@@ -5,21 +5,23 @@
 //   name         — screenshot filename stem (e.g. "title-default" → title-default-desktop.png)
 //   description  — what this screenshot shows (printed in runner output)
 //   state        — object injected as window.__HERD_SCENARIO (overrides useState defaults)
-//   localStorage — optional object to inject into localStorage before mount
+//                  state.scores — optional {n: [{name, time}, ...]} to override getScores()
 //   setup        — optional async function(page) run after mount, before capture
 //   viewports    — optional array of viewport names to restrict to (default: all)
 
-const HS_KEY = "herd-highscores";
+const mockScores7 = [
+  { name: "ACE", time: 28 },
+  { name: "SAM", time: 35 },
+  { name: "JOE", time: 42 },
+  { name: "MAX", time: 51 },
+  { name: "ZOE", time: 67 },
+];
 
-const mockScores = {
-  7: [
-    { name: "ACE", time: 28 },
-    { name: "SAM", time: 35 },
-    { name: "JOE", time: 42 },
-    { name: "MAX", time: 51 },
-    { name: "ZOE", time: 67 },
-  ],
-};
+const mockScores15 = [
+  { name: "PRO", time: 55 },
+  { name: "VET", time: 72 },
+  { name: "OLD", time: 88 },
+];
 
 export default [
   {
@@ -30,8 +32,7 @@ export default [
   {
     name: "title-with-scores",
     description: "Title screen with high score table populated",
-    state: { gameState: "title", totalSheep: 7 },
-    localStorage: { [HS_KEY]: JSON.stringify(mockScores) },
+    state: { gameState: "title", totalSheep: 7, scores: { 7: mockScores7 } },
   },
   {
     name: "playing-start",
@@ -60,15 +61,75 @@ export default [
   },
   {
     name: "won-screen",
-    description: "Victory screen with high scores",
-    state: { gameState: "won", totalSheep: 7, timer: 42, sheepCount: 7, lastScore: { name: "ACE", time: 42 } },
-    localStorage: {
-      [HS_KEY]: JSON.stringify({
-        7: [
-          { name: "ACE", time: 42 },
-          { name: "SAM", time: 55 },
-        ],
-      }),
+    description: "Victory screen with two scores, current highlighted",
+    state: {
+      gameState: "won", totalSheep: 7, timer: 42, sheepCount: 7,
+      lastScore: { name: "ACE", time: 42 },
+      scores: { 7: [{ name: "ACE", time: 42 }, { name: "SAM", time: 55 }] },
     },
+  },
+
+  // --- High score result states ---
+  {
+    name: "won-new-record",
+    description: "Victory with new #1 high score (Lightning fast!)",
+    state: {
+      gameState: "won", totalSheep: 7, timer: 18, sheepCount: 7,
+      lastScore: { name: "GOD", time: 18 },
+      scores: { 7: [{ name: "GOD", time: 18 }, ...mockScores7] },
+    },
+  },
+  {
+    name: "won-last-place",
+    description: "Victory with score that just made #5 on the board",
+    state: {
+      gameState: "won", totalSheep: 7, timer: 64, sheepCount: 7,
+      lastScore: { name: "MEH", time: 64 },
+      scores: { 7: [...mockScores7.slice(0, 4), { name: "MEH", time: 64 }] },
+    },
+  },
+  {
+    name: "won-no-highscore",
+    description: "Victory without qualifying for the high score board",
+    state: {
+      gameState: "won", totalSheep: 7, timer: 95, sheepCount: 7,
+      scores: { 7: mockScores7 },
+    },
+  },
+  {
+    name: "won-slow",
+    description: "Victory with slow time (Patience pays off!)",
+    state: {
+      gameState: "won", totalSheep: 15, timer: 142, sheepCount: 15,
+      lastScore: { name: "SLO", time: 142 },
+      scores: { 15: [...mockScores15, { name: "SLO", time: 142 }] },
+    },
+  },
+  {
+    name: "won-full-board",
+    description: "Victory with a full 5-entry high score board, new score highlighted mid-table",
+    state: {
+      gameState: "won", totalSheep: 7, timer: 40, sheepCount: 7,
+      lastScore: { name: "NEW", time: 40 },
+      scores: {
+        7: [
+          { name: "ACE", time: 28 },
+          { name: "SAM", time: 35 },
+          { name: "NEW", time: 40 },
+          { name: "JOE", time: 42 },
+          { name: "MAX", time: 51 },
+        ],
+      },
+    },
+  },
+  {
+    name: "enter-name-first-score",
+    description: "Name entry when board is empty (first ever score)",
+    state: { gameState: "enterName", totalSheep: 7, timer: 45, sheepCount: 7, nameChars: [0, 0, 0], nameCursor: 0 },
+  },
+  {
+    name: "title-scores-15-sheep",
+    description: "Title screen showing high scores for 15-sheep mode",
+    state: { gameState: "title", totalSheep: 15, scores: { 15: mockScores15 } },
   },
 ];

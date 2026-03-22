@@ -5,6 +5,8 @@ const { useState, useEffect, useRef, useCallback } = React;
 // === High scores (localStorage, top 5 per sheep count) ===
 const HS_KEY = "herd-highscores";
 function getScores(n) {
+  const sc = window.__HERD_SCENARIO;
+  if (sc && sc.scores) return sc.scores[n] || [];
   try { return (JSON.parse(localStorage.getItem(HS_KEY)) || {})[n] || []; }
   catch { return []; }
 }

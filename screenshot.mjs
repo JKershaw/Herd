@@ -9,12 +9,7 @@ const babel = readFileSync("vendor/babel.min.js", "utf-8");
 const gameJs = readFileSync("game.js", "utf-8");
 const appJsx = readFileSync("app.jsx", "utf-8");
 
-function buildHTML(scenarioJSON, localStorageEntries) {
-  const lsScript = localStorageEntries
-    ? Object.entries(localStorageEntries)
-        .map(([k, v]) => `localStorage.setItem(${JSON.stringify(k)}, ${JSON.stringify(v)});`)
-        .join("\n")
-    : "";
+function buildHTML(scenarioJSON) {
 
   return `<!DOCTYPE html>
 <html lang="en">
@@ -41,7 +36,6 @@ function buildHTML(scenarioJSON, localStorageEntries) {
   <script>${babel}</script>
   <script>
     window.__HERD_SCENARIO = ${scenarioJSON};
-    ${lsScript}
   </script>
   <script type="module">${gameJs}</script>
   <script type="text/babel" data-type="module">${appJsx}</script>
@@ -88,7 +82,7 @@ async function run() {
       const outPath = `screenshots/${scenario.name}-${vpName}.png`;
 
       try {
-        const html = buildHTML(JSON.stringify(scenario.state), scenario.localStorage);
+        const html = buildHTML(JSON.stringify(scenario.state));
         const context = await browser.newContext({ viewport });
         const page = await context.newPage();
 

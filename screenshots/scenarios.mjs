@@ -23,7 +23,42 @@ const mockScores15 = [
   { name: "OLD", time: 88 },
 ];
 
+const PI = Math.PI;
+
 export default [
+  // --- Character sprite sheets ---
+  {
+    name: "sprites-sheep",
+    description: "Sheep in different states",
+    canvasOnly: true,
+    state: {
+      gameState: "playing",
+      sprites: [
+        { type: "sheep", label: "Walking", overrides: { headDir: 0, wobble: 0.8 } },
+        { type: "sheep", label: "Grazing", overrides: { isGrazing: true, wobble: 1.5, headDir: PI / 2 } },
+        { type: "sheep", label: "Panicking", overrides: { panic: 0.8, headDir: -0.5, wobble: 2.0 } },
+        { type: "sheep", label: "Settled", overrides: { settled: true, headDir: 0 } },
+      ],
+    },
+    viewports: ["desktop"],
+  },
+  {
+    name: "sprites-dog",
+    description: "Dog in different poses and directions",
+    canvasOnly: true,
+    state: {
+      gameState: "playing",
+      sprites: [
+        { type: "dog", label: "Right", overrides: { renderDir: 0 } },
+        { type: "dog", label: "Down", overrides: { renderDir: PI / 2 } },
+        { type: "dog", label: "Left", overrides: { renderDir: PI } },
+        { type: "dog", label: "Up", overrides: { renderDir: -PI / 2 } },
+        { type: "dog", label: "Whistle", overrides: { renderDir: 0 }, whistleActive: true, tick: 105 },
+        { type: "dog", label: "Looking", overrides: { renderDir: 0, idleTime: 1.1, lookDir: 0.3 } },
+      ],
+    },
+    viewports: ["desktop"],
+  },
   {
     name: "title-default",
     description: "Title screen with default settings",

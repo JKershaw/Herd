@@ -96,7 +96,11 @@ async function run() {
         // Run optional setup (e.g. interactions that can't be expressed as state)
         if (scenario.setup) await scenario.setup(page);
 
-        await page.screenshot({ path: outPath });
+        if (scenario.canvasOnly) {
+          await page.locator("canvas").screenshot({ path: outPath });
+        } else {
+          await page.screenshot({ path: outPath });
+        }
         await context.close();
 
         const ms = Math.round(performance.now() - t0);

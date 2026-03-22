@@ -73,21 +73,27 @@ const isLocal = location.hostname === "localhost" || location.hostname === "127.
 const SHEEP_OPTIONS = isLocal ? [1, 5, 7, 10, 15] : [5, 7, 10, 15];
 
 function SheepHerdingGame() {
+  // Scenario mode: when __HERD_SCENARIO is set, render a frozen frame for screenshots
+  const scenario = window.__HERD_SCENARIO;
+  const scenarioNeedsCanvas = scenario && scenario.gameState !== "title";
+
   const canvasRef = useRef(null);
   const gameRef = useRef(null);
   const audioRef = useRef(null);
   const keysRef = useRef(new Set());
   const lastWhistleRef = useRef(null);
   const whistleBtnRef = useRef(null);
-  const [gameState, setGameState] = useState("playing");
-  const [timer, setTimer] = useState(0);
-  const [sheepCount, setSheepCount] = useState(0);
-  const [totalSheep, setTotalSheep] = useState(7);
-  const [activeWhistle, setActiveWhistle] = useState(null);
-  const [showSettings, setShowSettings] = useState(false);
-  const [nameChars, setNameChars] = useState([0, 0, 0]); // indices into A-Z
-  const [nameCursor, setNameCursor] = useState(0);
-  const [lastScore, setLastScore] = useState(null); // {name, time} after saving
+  const [gameState, setGameState] = useState(
+    scenario ? (scenarioNeedsCanvas ? "playing" : scenario.gameState) : "playing"
+  );
+  const [timer, setTimer] = useState(scenario?.timer ?? 0);
+  const [sheepCount, setSheepCount] = useState(scenario?.sheepCount ?? 0);
+  const [totalSheep, setTotalSheep] = useState(scenario?.totalSheep ?? 7);
+  const [activeWhistle, setActiveWhistle] = useState(scenario?.activeWhistle ?? null);
+  const [showSettings, setShowSettings] = useState(scenario?.showSettings ?? false);
+  const [nameChars, setNameChars] = useState(scenario?.nameChars ?? [0, 0, 0]);
+  const [nameCursor, setNameCursor] = useState(scenario?.nameCursor ?? 0);
+  const [lastScore, setLastScore] = useState(scenario?.lastScore ?? null);
 
   const ensureAudio = useCallback(() => {
     if (!audioRef.current) audioRef.current = new (window.AudioContext || window.webkitAudioContext)();
@@ -111,8 +117,26 @@ function SheepHerdingGame() {
     setNameChars([0, 0, 0]); setNameCursor(0); setLastScore(null);
   }, [totalSheep]);
 
-  // Start a game immediately on first load
-  useEffect(() => { initGame(7); }, []);
+  // Start a game immediately on first load (or set up scenario state)
+  useEffect(() => {
+    if (scenario) {
+      const count = scenario.totalSheep || 7;
+      gameRef.current = {
+        sheep: createSheep(count), dog: createDog(),
+        tick: 100, won: false, winDelay: 0, started: true, particles: [],
+        grass: Array.from({ length: 500 }, () => ({
+          x: Math.floor(FENCE_L + Math.random() * (FENCE_R - FENCE_L)),
+          y: Math.floor(FENCE_T + Math.random() * (FENCE_B - FENCE_T)),
+          shade: Math.floor(Math.random() * 3),
+        })),
+        clusters: [], numSheep: count,
+      };
+      if (scenario.activeWhistle) whistleBtnRef.current = scenario.activeWhistle;
+      if (!scenarioNeedsCanvas) window.__HERD_READY = true;
+      return;
+    }
+    initGame(7);
+  }, []);
 
   useEffect(() => {
     const down = (e) => {
@@ -313,6 +337,16 @@ function SheepHerdingGame() {
         c.fillRect(Math.floor(p.x), Math.floor(p.y), Math.ceil(p.size), Math.ceil(p.size));
       });
       c.globalAlpha = 1;
+    }
+
+    // Scenario mode: render one frame, switch to target state, signal ready
+    if (scenario) {
+      render(ctx);
+      if (scenarioNeedsCanvas && scenario.gameState !== "playing") {
+        setGameState(scenario.gameState);
+      }
+      window.__HERD_READY = true;
+      return;
     }
 
     function loop(now) {

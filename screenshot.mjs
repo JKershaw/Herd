@@ -1,14 +1,22 @@
 import { chromium } from "playwright-core";
-import { readFileSync } from "fs";
+import { readFileSync, mkdirSync } from "fs";
+import scenarios from "./screenshots/scenarios.mjs";
 
+// --- Load source files (inlined into HTML for zero-network screenshots) ---
 const react = readFileSync("vendor/react.production.min.js", "utf-8");
 const reactDom = readFileSync("vendor/react-dom.production.min.js", "utf-8");
 const babel = readFileSync("vendor/babel.min.js", "utf-8");
 const gameJs = readFileSync("game.js", "utf-8");
 const appJsx = readFileSync("app.jsx", "utf-8");
 
-// Build a fully self-contained HTML page — zero network requests
-const html = `<!DOCTYPE html>
+function buildHTML(scenarioJSON, localStorageEntries) {
+  const lsScript = localStorageEntries
+    ? Object.entries(localStorageEntries)
+        .map(([k, v]) => `localStorage.setItem(${JSON.stringify(k)}, ${JSON.stringify(v)});`)
+        .join("\n")
+    : "";
+
+  return `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
@@ -31,10 +39,15 @@ const html = `<!DOCTYPE html>
   <script>${react}</script>
   <script>${reactDom}</script>
   <script>${babel}</script>
+  <script>
+    window.__HERD_SCENARIO = ${scenarioJSON};
+    ${lsScript}
+  </script>
   <script type="module">${gameJs}</script>
   <script type="text/babel" data-type="module">${appJsx}</script>
 </body>
 </html>`;
+}
 
 const VIEWPORTS = {
   desktop: { width: 1280, height: 800 },
@@ -42,54 +55,74 @@ const VIEWPORTS = {
 };
 
 async function run() {
+  // Filter scenarios by CLI pattern (if provided)
+  const pattern = process.argv[2];
+  const active = pattern
+    ? scenarios.filter(s => s.name.includes(pattern))
+    : scenarios;
+
+  if (active.length === 0) {
+    console.error(`No scenarios matching "${pattern}"`);
+    process.exit(1);
+  }
+
+  mkdirSync("screenshots", { recursive: true });
+
   const browser = await chromium.launch({
     executablePath: "/root/.cache/ms-playwright/chromium-1194/chrome-linux/chrome",
     args: ["--no-sandbox", "--disable-setuid-sandbox"],
   });
+
   const shots = [];
+  let passed = 0;
+  let failed = 0;
 
-  for (const [name, viewport] of Object.entries(VIEWPORTS)) {
-    const context = await browser.newContext({ viewport });
-    const page = await context.newPage();
+  for (const scenario of active) {
+    const viewportNames = scenario.viewports || Object.keys(VIEWPORTS);
 
-    await page.setContent(html, { timeout: 30000 });
+    for (const vpName of viewportNames) {
+      const viewport = VIEWPORTS[vpName];
+      if (!viewport) { console.warn(`  unknown viewport "${vpName}", skipping`); continue; }
 
-    // Wait for Babel to compile and React to mount
-    await page.waitForSelector("button", { timeout: 15000 });
-    await page.waitForTimeout(500);
+      const t0 = performance.now();
+      const outPath = `screenshots/${scenario.name}-${vpName}.png`;
 
-    // Title screen
-    await page.screenshot({ path: `screenshot-${name}-title.png` });
-    shots.push(`screenshot-${name}-title.png`);
-    console.log(`  captured ${name}-title`);
+      try {
+        const html = buildHTML(JSON.stringify(scenario.state), scenario.localStorage);
+        const context = await browser.newContext({ viewport });
+        const page = await context.newPage();
 
-    // Click START
-    await page.evaluate(() => {
-      for (const btn of document.querySelectorAll("button")) {
-        if (btn.textContent.includes("START")) { btn.click(); break; }
+        await page.setContent(html, { timeout: 30000 });
+
+        // Wait for React to mount and scenario to signal readiness
+        await page.waitForFunction(() => window.__HERD_READY === true, { timeout: 15000 });
+        // Brief settle for any React re-renders (e.g. state transitions for overlays)
+        await page.waitForTimeout(200);
+
+        // Run optional setup (e.g. interactions that can't be expressed as state)
+        if (scenario.setup) await scenario.setup(page);
+
+        await page.screenshot({ path: outPath });
+        await context.close();
+
+        const ms = Math.round(performance.now() - t0);
+        console.log(`  \u2713 ${scenario.name} (${vpName}) \u2014 ${ms}ms`);
+        shots.push(outPath);
+        passed++;
+      } catch (err) {
+        const ms = Math.round(performance.now() - t0);
+        console.error(`  \u2717 ${scenario.name} (${vpName}) \u2014 ${ms}ms`);
+        console.error(`    ${err.message}`);
+        failed++;
       }
-    });
-
-    // Let gameplay run
-    await page.waitForTimeout(2000);
-    await page.screenshot({ path: `screenshot-${name}-playing.png` });
-    shots.push(`screenshot-${name}-playing.png`);
-    console.log(`  captured ${name}-playing`);
-
-    // Issue come-bye whistle
-    await page.keyboard.down("q");
-    await page.waitForTimeout(2000);
-    await page.keyboard.up("q");
-    await page.waitForTimeout(500);
-    await page.screenshot({ path: `screenshot-${name}-herding.png` });
-    shots.push(`screenshot-${name}-herding.png`);
-    console.log(`  captured ${name}-herding`);
-
-    await context.close();
+    }
   }
 
   await browser.close();
-  console.log("\nAll screenshots captured:", shots.join(", "));
+
+  console.log(`\n${passed + failed} screenshots: ${passed} captured, ${failed} failed`);
+  if (shots.length) console.log("Output:", shots.join(", "));
+  if (failed) process.exit(1);
 }
 
 run().catch(e => { console.error(e); process.exit(1); });

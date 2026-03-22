@@ -489,6 +489,12 @@ function SheepHerdingGame() {
             cursor: "pointer", letterSpacing: 3, borderRadius: 2,
           }}>START</button>
           <div style={{ color: "#6a7848", fontSize: 9, marginTop: 8 }}>Q / W / E &nbsp;or&nbsp; 1 / 2 / 3 &nbsp;&nbsp;·&nbsp;&nbsp; R = reset</div>
+          {(() => {
+            const ts = document.querySelector('meta[name="build-timestamp"]')?.content;
+            return ts && ts !== "__BUILD_TIMESTAMP__" && (
+              <div style={{ color: "#3a4a28", fontSize: 8, marginTop: 12 }}>deployed {ts}</div>
+            );
+          })()}
         </div>
       )}
 

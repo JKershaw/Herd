@@ -2,6 +2,9 @@ const { useState, useEffect, useRef, useCallback } = React;
 
 // Constants and pure game functions are loaded from game.js as globals.
 
+// Touch device detection (hide keyboard hints, adjust layout)
+const IS_TOUCH = typeof window !== 'undefined' && ('ontouchstart' in window || navigator.maxTouchPoints > 0);
+
 // === High scores (localStorage, top 5 per sheep count) ===
 const HS_KEY = "herd-highscores";
 function getScores(n) {
@@ -96,6 +99,10 @@ function SheepHerdingGame() {
   const [nameChars, setNameChars] = useState(scenario?.nameChars ?? [0, 0, 0]);
   const [nameCursor, setNameCursor] = useState(scenario?.nameCursor ?? 0);
   const [lastScore, setLastScore] = useState(scenario?.lastScore ?? null);
+  const [showOnboarding, setShowOnboarding] = useState(() => {
+    if (scenario) return false;
+    try { return !localStorage.getItem("herd-onboarded"); } catch { return true; }
+  });
 
   const ensureAudio = useCallback(() => {
     if (!audioRef.current) audioRef.current = new (window.AudioContext || window.webkitAudioContext)();
@@ -266,6 +273,30 @@ function SheepHerdingGame() {
       if (whistleActive) {
         c.fillStyle = "rgba(255,255,200,0.22)";
         c.beginPath(); c.arc(dx, dy - 7, 4 + Math.sin(tick * 0.2) * 1.5, 0, Math.PI * 2); c.fill();
+        // Directional command indicator
+        const cmdR = 10 + Math.sin(tick * 0.15) * 1.5;
+        c.strokeStyle = "rgba(255,255,200,0.28)";
+        c.lineWidth = 1;
+        c.beginPath();
+        if (typeof whistleActive === "string" && whistleActive === "comebye") {
+          c.arc(dx, dy, cmdR, dir - 0.3, dir + 2.2); c.stroke();
+          // Arrow tip
+          const tipA = dir + 2.2;
+          c.fillStyle = "rgba(255,255,200,0.3)";
+          c.fillRect(Math.floor(dx + Math.cos(tipA) * cmdR), Math.floor(dy + Math.sin(tipA) * cmdR), 2, 2);
+        } else if (typeof whistleActive === "string" && whistleActive === "away") {
+          c.arc(dx, dy, cmdR, dir - 2.2, dir + 0.3); c.stroke();
+          const tipA = dir - 2.2;
+          c.fillStyle = "rgba(255,255,200,0.3)";
+          c.fillRect(Math.floor(dx + Math.cos(tipA) * cmdR), Math.floor(dy + Math.sin(tipA) * cmdR), 2, 2);
+        } else if (typeof whistleActive === "string" && whistleActive === "walkup") {
+          // Straight arrow toward focus
+          c.moveTo(dx + Math.cos(dir) * 6, dy + Math.sin(dir) * 6);
+          c.lineTo(dx + Math.cos(dir) * (cmdR + 4), dy + Math.sin(dir) * (cmdR + 4));
+          c.stroke();
+          c.fillStyle = "rgba(255,255,200,0.3)";
+          c.fillRect(Math.floor(dx + Math.cos(dir) * (cmdR + 4)), Math.floor(dy + Math.sin(dir) * (cmdR + 4)), 2, 2);
+        }
       }
       if (!whistleActive && d.idleTime > 0.8 && d.idleTime < 1.5) {
         const a = 0.3 * Math.min(1, (d.idleTime - 0.8) / 0.3);
@@ -310,10 +341,17 @@ function SheepHerdingGame() {
     function render(c) {
       const g = gameRef.current;
       c.fillStyle = "#3a7d28"; c.fillRect(0, 0, W, H);
-      g.grass.forEach(gs => { c.fillStyle = ["#348522", "#3f8a2d", "#2d7a1e"][gs.shade]; c.fillRect(gs.x, gs.y, 1, 1); });
+      // Subtle grass texture variation — patches of slightly different green
+      g.grass.forEach(gs => { c.fillStyle = ["#348522", "#3f8a2d", "#2d7a1e", "#368726", "#3a8030"][gs.shade % 5]; c.fillRect(gs.x, gs.y, 1, 1); });
+      // Subtle inner vignette on the field
+      const vg = c.createRadialGradient(W / 2, H / 2, 40, W / 2, H / 2, Math.max(W, H) * 0.6);
+      vg.addColorStop(0, "rgba(0,0,0,0)"); vg.addColorStop(1, "rgba(0,0,0,0.12)");
+      c.fillStyle = vg; c.fillRect(0, 0, W, H);
 
-      // Outer fences
-      const fB = "#6B4226", fL = "#8B5E3C";
+      // Outer fences — with shadow for depth
+      const fB = "#6B4226", fL = "#8B5E3C", fS = "rgba(0,0,0,0.15)";
+      px(c, FENCE_L - 2, FENCE_T + 1, W - 24, 2, fS); // top shadow
+      px(c, FENCE_L - 2, FENCE_B + 3, W - 24, 1, fS); // bottom shadow
       px(c, FENCE_L - 2, FENCE_T - 2, W - 24, 3, fB); px(c, FENCE_L - 2, FENCE_T - 2, W - 24, 2, fL);
       px(c, FENCE_L - 2, FENCE_B, W - 24, 3, fB); px(c, FENCE_L - 2, FENCE_B, W - 24, 2, fL);
       px(c, FENCE_L - 2, FENCE_T - 2, 3, FENCE_B - FENCE_T + 5, fB); px(c, FENCE_L - 2, FENCE_T - 2, 2, FENCE_B - FENCE_T + 5, fL);
@@ -323,8 +361,9 @@ function SheepHerdingGame() {
       for (let p = FENCE_L + 6; p < FENCE_R; p += 18) { px(c, p, FENCE_T - 3, 2, 4, "#5a3a1a"); px(c, p, FENCE_B - 1, 2, 4, "#5a3a1a"); }
       for (let p = FENCE_T + 6; p < FENCE_B; p += 18) { px(c, FENCE_L - 3, p, 4, 2, "#5a3a1a"); px(c, FENCE_R - 1, p, 4, 2, "#5a3a1a"); }
 
-      // Pen interior
+      // Pen interior — slightly different ground color to mark the goal
       c.fillStyle = "#3a8530"; c.fillRect(PEN.x + 3, PEN.y, PEN.w - 3, PEN.h);
+      c.fillStyle = "rgba(180,200,80,0.06)"; c.fillRect(PEN.x + 3, PEN.y, PEN.w - 3, PEN.h);
 
       // Pen fences
       const pB = "#7a5030", pL = "#a0714f";
@@ -344,9 +383,25 @@ function SheepHerdingGame() {
       for (let p = PEN.y + 8; p < PEN.gateY; p += 14) px(c, PEN.x - 1, p, 3, 2, "#5a3a1a");
       for (let p = PEN.gateY + PEN.gateH + 8; p < PEN.y + PEN.h - 4; p += 14) px(c, PEN.x - 1, p, 3, 2, "#5a3a1a");
 
-      // Gate opening hint — subtle lighter ground
-      c.fillStyle = "rgba(160,180,100,0.08)";
-      c.fillRect(PEN.x - 6, PEN.gateY + 2, 8, PEN.gateH - 4);
+      // Gate opening — bright ground path to draw the eye
+      c.fillStyle = "rgba(180,200,80,0.18)";
+      c.fillRect(PEN.x - 10, PEN.gateY + 1, 14, PEN.gateH - 2);
+      c.fillStyle = "rgba(220,240,120,0.12)";
+      c.fillRect(PEN.x - 6, PEN.gateY + 3, 8, PEN.gateH - 6);
+      // Gate post highlights
+      c.fillStyle = "#8a6a3a";
+      c.fillRect(PEN.x - 1, PEN.gateY - 2, 4, 3);
+      c.fillRect(PEN.x - 1, PEN.gateY + PEN.gateH - 1, 4, 3);
+      // Small chevron arrows pointing into the gate
+      const gMidY = PEN.gateY + PEN.gateH / 2;
+      c.fillStyle = "rgba(200,220,100,0.22)";
+      for (let ci = -1; ci <= 1; ci++) {
+        const cy = gMidY + ci * 14;
+        if (cy < PEN.gateY + 4 || cy > PEN.gateY + PEN.gateH - 4) continue;
+        c.fillRect(PEN.x - 10, cy, 1, 1);
+        c.fillRect(PEN.x - 9, cy - 1, 1, 1);
+        c.fillRect(PEN.x - 9, cy + 1, 1, 1);
+      }
 
       // Focus ring
       if (g.clusters.length > 1) {
@@ -365,7 +420,7 @@ function SheepHerdingGame() {
       sorted.forEach(s => drawSheep(c, s));
 
       // Dog collie
-      drawDog(c, g.dog, g.tick, !!getWhistle());
+      drawDog(c, g.dog, g.tick, getWhistle());
 
       // Particles
       g.particles.forEach(p => {
@@ -455,30 +510,33 @@ function SheepHerdingGame() {
   const fmtTime = (s) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
 
   const wColors = {
-    comebye: { bg: "#c49828", active: "#ffe04a", text: "#fff8e0" },
-    away: { bg: "#3878a0", active: "#58c8f0", text: "#e0f0ff" },
-    walkup: { bg: "#b04838", active: "#ff7060", text: "#ffe8e4" },
+    comebye: { bg: "#36562a", active: "#5aaa40", text: "#c8d8a0", glow: "#70c050", border: "#4a7a30" },
+    away: { bg: "#2a4a36", active: "#40aa6a", text: "#a8d8c0", glow: "#50c080", border: "#307a4a" },
+    walkup: { bg: "#3a5030", active: "#70b050", text: "#d0dca0", glow: "#90d060", border: "#5a8a38" },
   };
 
   return (
     <div style={{
       display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
-      minHeight: "100vh", background: "#0e1608", fontFamily: "'Courier New', monospace",
-      padding: "8px", boxSizing: "border-box", userSelect: "none",
+      minHeight: "100vh",
+      background: "radial-gradient(ellipse at center, #162010 0%, #0a0e04 100%)",
+      fontFamily: "'Courier New', monospace",
+      padding: "6px", boxSizing: "border-box", userSelect: "none",
     }}>
-      <div style={{ color: "#a0b878", fontSize: 13, letterSpacing: 5, marginBottom: 3, textTransform: "uppercase", fontWeight: "bold" }}>
-        Sheep Herder
-      </div>
-      <div style={{ display: "flex", gap: 16, marginBottom: 4, color: "#94a870", fontSize: 11, alignItems: "center" }}>
-        <span>{fmtTime(timer)}</span>
-        <span style={{ color: "#a0b878" }}>{sheepCount}/{totalSheep} penned</span>
+      {gameState !== "title" && (<div style={{
+        display: "flex", alignItems: "center", justifyContent: "center",
+        gap: 12, marginBottom: 3, width: "100%", maxWidth: W * 3 + 4,
+        position: "relative", padding: "0 32px", zIndex: 20,
+      }}>
+        <span style={{ color: "#c8d8a0", fontSize: 15, fontWeight: "bold", fontVariantNumeric: "tabular-nums" }}>{fmtTime(timer)}</span>
+        <span style={{ color: "#a0b878", fontSize: 12, letterSpacing: 1, fontWeight: "bold" }}>HERD</span>
+        <span style={{ color: "#c8d8a0", fontSize: 15, fontWeight: "bold" }}>{sheepCount}<span style={{ color: "#7a8a58", fontSize: 11 }}>/{totalSheep}</span></span>
         {gameState === "playing" && (
-          <div style={{ position: "relative", marginLeft: 4 }}>
+          <div style={{ position: "absolute", right: 0, top: "50%", transform: "translateY(-50%)" }}>
             <button onClick={() => setShowSettings(v => !v)} style={{
-              background: showSettings ? "#3a4a20" : "none", border: "1px solid #3a4a20", color: "#a0b878",
-              fontSize: 10, padding: "2px 8px", fontFamily: "'Courier New', monospace",
-              cursor: "pointer", borderRadius: 2,
-            }}>{showSettings ? "✕" : "⚙"} Settings</button>
+              background: showSettings ? "#3a4a20" : "none", border: "none", color: "#8a9868",
+              fontSize: 16, padding: "4px 6px", cursor: "pointer", lineHeight: 1,
+            }}>{showSettings ? "✕" : "\u2699"}</button>
             {showSettings && (
               <div style={{
                 position: "absolute", top: "100%", right: 0, marginTop: 4, zIndex: 10,
@@ -514,7 +572,7 @@ function SheepHerdingGame() {
             )}
           </div>
         )}
-      </div>
+      </div>)}
 
       {gameState === "title" && (
         <div style={{
@@ -682,12 +740,12 @@ function SheepHerdingGame() {
       </div>
       )}
 
-      <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
+      <div style={{ display: "flex", gap: 6, marginTop: 6, width: "100%", maxWidth: W * 3 + 4, justifyContent: "center" }}>
         {[
-          { cmd: "comebye", label: "Come-bye", sub: "circle left", key: "Q/1" },
-          { cmd: "away", label: "Away to me", sub: "circle right", key: "W/2" },
-          { cmd: "walkup", label: "Walk up", sub: "approach", key: "E/3" },
-        ].map(({ cmd, label, sub, key }) => {
+          { cmd: "comebye", label: "circle left", icon: "\u21B6", key: "Q/1" },
+          { cmd: "away", label: "circle right", icon: "\u21B7", key: "W/2" },
+          { cmd: "walkup", label: "approach", icon: "\u2191", key: "E/3" },
+        ].map(({ cmd, label, icon, key }) => {
           const cl = wColors[cmd];
           const on = activeWhistle === cmd;
           return (
@@ -695,23 +753,61 @@ function SheepHerdingGame() {
               onPointerDown={(e) => { e.preventDefault(); wDown(cmd); }}
               onPointerUp={wUp} onPointerLeave={wUp} onContextMenu={e => e.preventDefault()}
               style={{
-                background: on ? cl.active : cl.bg, color: on ? "#1a1a1a" : cl.text,
-                border: `2px solid ${on ? "#fff" : "rgba(255,255,255,0.3)"}`,
-                borderRadius: 3, padding: "7px 11px",
+                background: on ? cl.active : cl.bg,
+                color: on ? "#f0ffe0" : cl.text,
+                border: `2px solid ${on ? cl.glow : cl.border}`,
+                borderRadius: 4, padding: IS_TOUCH ? "14px 8px" : "10px 11px",
                 fontFamily: "'Courier New', monospace", fontSize: 11, fontWeight: "bold",
-                cursor: "pointer", textAlign: "center", minWidth: 86,
-                transition: "all 0.08s", transform: on ? "scale(0.93)" : "scale(1)",
-                boxShadow: on ? `0 0 16px ${cl.active}50` : "none", touchAction: "none",
+                cursor: "pointer", textAlign: "center", flex: 1, maxWidth: 140,
+                minHeight: IS_TOUCH ? 60 : 44,
+                transition: "all 0.08s",
+                transform: on ? "scale(0.97)" : "scale(1)",
+                boxShadow: on ? `0 0 24px ${cl.glow}70, inset 0 0 12px ${cl.glow}40` : `inset 0 -2px 0 rgba(0,0,0,0.25), 0 1px 3px rgba(0,0,0,0.3)`,
+                touchAction: "none",
+                filter: on ? "brightness(1.3)" : "none",
               }}>
-              <div>{label}</div>
-              <div style={{ fontSize: 9, fontWeight: "normal", opacity: 0.9, marginTop: 2 }}>{sub} [{key}]</div>
+              <div style={{ fontSize: 18, lineHeight: 1, marginBottom: 3 }}>{icon}</div>
+              <div style={{ fontSize: IS_TOUCH ? 10 : 9, fontWeight: "normal", opacity: 0.85, textTransform: "uppercase", letterSpacing: 0.5 }}>
+                {label}{!IS_TOUCH ? ` [${key}]` : ""}
+              </div>
             </button>
           );
         })}
       </div>
-      <div style={{ color: "#5a6838", fontSize: 8, marginTop: 5, textAlign: "center", maxWidth: 460, lineHeight: 1.5 }}>
-        Hold a whistle to command · Release to let the dog pause & refocus · Push sheep through the gate
-      </div>
+
+      {showOnboarding && gameState === "playing" && (
+        <div
+          onClick={() => { setShowOnboarding(false); try { localStorage.setItem("herd-onboarded", "1"); } catch {} }}
+          style={{
+            position: "fixed", inset: 0, zIndex: 100,
+            display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
+            background: "rgba(10, 16, 5, 0.85)", cursor: "pointer",
+          }}>
+          <div style={{ background: "#1a2a10", border: "2px solid #3a5a20", borderRadius: 6, padding: "20px 24px", maxWidth: 320, textAlign: "center" }}>
+            <div style={{ color: "#c8d8a0", fontSize: 16, fontWeight: "bold", marginBottom: 10 }}>HOW TO PLAY</div>
+            <div style={{ color: "#a0b878", fontSize: 12, lineHeight: 1.7, marginBottom: 12 }}>
+              <strong style={{ color: "#d0dca8" }}>HOLD</strong> a button to command your dog.<br />
+              <strong style={{ color: "#d0dca8" }}>RELEASE</strong> to let the dog pause & refocus.<br /><br />
+              Push all sheep through the <strong style={{ color: "#ddc060" }}>gate</strong> into the pen on the right side of the field.
+            </div>
+            <div style={{ display: "flex", justifyContent: "center", gap: 16, marginBottom: 12 }}>
+              <div style={{ textAlign: "center" }}>
+                <div style={{ fontSize: 20 }}>{"\u21B6"}</div>
+                <div style={{ color: "#8a9868", fontSize: 9 }}>CIRCLE LEFT</div>
+              </div>
+              <div style={{ textAlign: "center" }}>
+                <div style={{ fontSize: 20 }}>{"\u21B7"}</div>
+                <div style={{ color: "#8a9868", fontSize: 9 }}>CIRCLE RIGHT</div>
+              </div>
+              <div style={{ textAlign: "center" }}>
+                <div style={{ fontSize: 20 }}>{"\u2191"}</div>
+                <div style={{ color: "#8a9868", fontSize: 9 }}>APPROACH</div>
+              </div>
+            </div>
+            <div style={{ color: "#6a7848", fontSize: 10 }}>Tap anywhere to start</div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

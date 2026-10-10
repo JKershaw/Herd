@@ -23,6 +23,18 @@ You control a sheepdog by issuing whistle commands. Each command directs the dog
 - Push sheep through the open gate on the right side of the pen.
 - You can adjust the number of sheep (5, 7, 10, or 15) from the title screen or the in-game settings menu.
 
+### Dog breeds
+
+Pick your dog on the title screen or from the in-game ⚙ settings menu. You can switch mid-game without restarting, and your choice is remembered.
+
+| Breed | Feel |
+|-------|------|
+| **Border Collie** (default) | Balanced all-rounder |
+| **Corgi** | Slower but nimble; circles tight; sheep scatter less |
+| **Kelpie** | Fast with wide casts; overshoots; sheep react from further out |
+
+High scores share one board per sheep count, and each entry shows the breed that set it.
+
 ## Running Locally
 
 No build step is required. Simply open `index.html` in a modern browser:
@@ -93,7 +105,7 @@ vendor/             — Local React/Babel copies for offline screenshots (gitign
 
 The game is a single React component (`SheepHerdingGame`) that manages three screens:
 
-- **Title** — Sheep count selector and start button (rendered as a normal flow element)
+- **Title** — Sheep count and dog breed selectors and start button (rendered as a normal flow element)
 - **Playing** — HTML5 Canvas with game loop driven by `requestAnimationFrame`
 - **Won** — Victory overlay with time and replay options
 

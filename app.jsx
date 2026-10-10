@@ -13,19 +13,78 @@ function getScores(n) {
   try { return (JSON.parse(localStorage.getItem(HS_KEY)) || {})[n] || []; }
   catch { return []; }
 }
-function saveScore(n, name, time) {
+// One shared board per sheep count; each entry is tagged with the breed that
+// finished the run (see addScore/scoreBreed in game.js).
+function saveScore(n, name, time, breed) {
   let all;
   try { all = JSON.parse(localStorage.getItem(HS_KEY)) || {}; } catch { all = {}; }
-  const list = all[n] || [];
-  list.push({ name: name.toUpperCase(), time });
-  list.sort((a, b) => a.time - b.time);
-  all[n] = list.slice(0, 5);
+  all[n] = addScore(all[n] || [], name, time, breed);
   localStorage.setItem(HS_KEY, JSON.stringify(all));
   return all[n];
 }
 function qualifies(n, time) {
   const list = getScores(n);
   return list.length < 5 || time < list[list.length - 1].time;
+}
+
+// === Dog breed preference (localStorage, defaults to collie) ===
+const BREED_KEY = "herd-breed";
+function loadBreed() {
+  try { return normalizeBreedId(localStorage.getItem(BREED_KEY)); }
+  catch { return DEFAULT_BREED; }
+}
+function storeBreed(id) {
+  try { localStorage.setItem(BREED_KEY, id); } catch {}
+}
+
+// Small breed tag shown beside a high-score name (untagged entries read as collie).
+function BreedTag({ entry }) {
+  return <span style={{ color: "#6a7848", fontSize: 9, marginLeft: 6 }}>{scoreBreed(entry).short}</span>;
+}
+
+// Shared option row (sheep count, dog breed) used on the title screen and in
+// the settings dropdown. The two variants reproduce the button styles each
+// screen used before this helper existed.
+const OPTION_VARIANTS = {
+  title: { idleBg: "#1e2a12", padding: "4px 10px", fontSize: 12, extra: { transition: "all 0.15s" } },
+  menu: { idleBg: "#222e14", padding: "3px 9px", fontSize: 11, extra: {} },
+};
+function OptionRow({ variant, label, options, value, onSelect, note }) {
+  const v = OPTION_VARIANTS[variant];
+  const buttons = options.map(o => {
+    const on = o.value === value;
+    return (
+      <button key={o.value} onClick={() => onSelect(o.value)} style={{
+        background: on ? "#4a6828" : v.idleBg,
+        color: on ? "#d0dca8" : "#8a9868",
+        border: `1px solid ${on ? "#6a8a3a" : "#3a4a20"}`,
+        borderRadius: 2, padding: v.padding, fontSize: v.fontSize,
+        fontFamily: "'Courier New', monospace", cursor: "pointer",
+        ...v.extra,
+      }}>{o.label}</button>
+    );
+  });
+  const noteEl = note ? (
+    <div style={{ color: "#6a7848", fontSize: 9, lineHeight: 1.4, textAlign: variant === "title" ? "center" : "left" }}>{note}</div>
+  ) : null;
+  if (variant === "title") {
+    return (
+      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", marginBottom: 12, gap: 4 }}>
+        <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+          <span style={{ color: "#8a9868", fontSize: 10, marginRight: 4 }}>{label}:</span>
+          {buttons}
+        </div>
+        {noteEl}
+      </div>
+    );
+  }
+  return (
+    <>
+      <div style={{ color: "#a0b878", fontSize: 10, marginBottom: 6 }}>{label}</div>
+      <div style={{ display: "flex", gap: 4, marginBottom: note ? 4 : 10 }}>{buttons}</div>
+      {note && <div style={{ marginBottom: 10 }}>{noteEl}</div>}
+    </>
+  );
 }
 
 function makeWhistle(ctx, freq, dur, sweep = 1.3) {
@@ -92,6 +151,7 @@ function winFanfare(ctx) {
 
 const isLocal = location.hostname === "localhost" || location.hostname === "127.0.0.1";
 const SHEEP_OPTIONS = isLocal ? [1, 5, 7, 10, 15] : [5, 7, 10, 15];
+const BREED_OPTIONS = BREED_IDS.map(id => ({ value: id, label: BREEDS[id].short }));
 
 function SheepHerdingGame() {
   // Scenario mode: when __HERD_SCENARIO is set, render a frozen frame for screenshots
@@ -115,6 +175,8 @@ function SheepHerdingGame() {
   const [nameChars, setNameChars] = useState(scenario?.nameChars ?? [0, 0, 0]);
   const [nameCursor, setNameCursor] = useState(scenario?.nameCursor ?? 0);
   const [lastScore, setLastScore] = useState(scenario?.lastScore ?? null);
+  // Scenario mode ignores the saved preference so screenshots are deterministic.
+  const [breed, setBreed] = useState(() => scenario ? normalizeBreedId(scenario.breed) : loadBreed());
 
   const ensureAudio = useCallback(() => {
     if (!audioRef.current) audioRef.current = new (window.AudioContext || window.webkitAudioContext)();
@@ -125,7 +187,7 @@ function SheepHerdingGame() {
   const initGame = useCallback((n) => {
     const count = n || totalSheep;
     gameRef.current = {
-      sheep: createSheep(count), dog: createDog(),
+      sheep: createSheep(count), dog: createDog(breed),
       tick: 0, won: false, winDelay: 0, started: false, particles: [],
       grass: Array.from({ length: 500 }, () => ({
         x: Math.floor(FENCE_L + Math.random() * (FENCE_R - FENCE_L)),
@@ -136,14 +198,44 @@ function SheepHerdingGame() {
     };
     setTimer(0); setSheepCount(0); setGameState("playing"); setShowSettings(false);
     setNameChars([0, 0, 0]); setNameCursor(0); setLastScore(null);
-  }, [totalSheep]);
+  }, [totalSheep, breed]);
+
+  // Switch breed live (title screen or mid-game). Mid-game this only swaps
+  // dog.breed — position, focus and AI state carry over, and game.js reads the
+  // breed's tuning on the next frame. The timer and run keep going, like the
+  // live sheep-count setting.
+  const switchBreed = useCallback((id) => {
+    const next = normalizeBreedId(id);
+    if (next === breed) return;
+    setBreed(next);
+    storeBreed(next);
+    const g = gameRef.current;
+    if (!g || gameState !== "playing") return;
+    g.dog.breed = next;
+    const col = getBreed(next).colors;
+    for (let p = 0; p < 10; p++) {
+      const a = (p / 10) * Math.PI * 2;
+      g.particles.push({
+        x: g.dog.x, y: g.dog.y,
+        vx: Math.cos(a) * (14 + Math.random() * 10),
+        vy: Math.sin(a) * (14 + Math.random() * 10) - 10,
+        life: 0.6, color: [col.coat, col.white, "#fff"][p % 3],
+        size: 1 + Math.random() * 0.5,
+      });
+    }
+    popSound(ensureAudio(), true);
+  }, [breed, gameState, ensureAudio]);
+
+  // Breed recorded on a saved score: the one active when the run finished
+  // (captured at win time), not whatever is selected when the name is entered.
+  const finishBreed = () => (gameRef.current && gameRef.current.finalBreed) || breed;
 
   // Start a game immediately on first load (or set up scenario state)
   useEffect(() => {
     if (scenario) {
       const count = scenario.totalSheep || 7;
       gameRef.current = {
-        sheep: createSheep(count), dog: createDog(),
+        sheep: createSheep(count), dog: createDog(scenario.breed),
         tick: 100, won: false, winDelay: 0, started: true, particles: [],
         grass: Array.from({ length: 500 }, () => ({
           x: Math.floor(FENCE_L + Math.random() * (FENCE_R - FENCE_L)),
@@ -172,7 +264,7 @@ function SheepHerdingGame() {
         if (e.key === "Enter") {
           const ALPHA = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
           const name = nameChars.map(i => ALPHA[i]).join("");
-          saveScore(totalSheep, name, timer);
+          saveScore(totalSheep, name, timer, finishBreed());
           setLastScore({ name, time: timer });
           setGameState("won");
         }
@@ -182,7 +274,7 @@ function SheepHerdingGame() {
     window.addEventListener("keydown", down);
     window.addEventListener("keyup", up);
     return () => { window.removeEventListener("keydown", down); window.removeEventListener("keyup", up); };
-  }, [gameState, initGame, nameCursor, nameChars, totalSheep, timer]);
+  }, [gameState, initGame, nameCursor, nameChars, totalSheep, timer, breed]);
 
   useEffect(() => () => { if (audioRef.current) audioRef.current.close(); }, []);
 
@@ -257,38 +349,55 @@ function SheepHerdingGame() {
       if (sc < 1) c.restore();
     }
 
+    // One draw routine for every breed: colours and a few shape flags come from
+    // the breed table in game.js. The collie (folded ears, standard body, plume
+    // tail) draws exactly the original sprite.
     function drawDog(c, d, tick, whistleActive) {
       const dx = Math.floor(d.x), dy = Math.floor(d.y);
       const dir = d.renderDir;
+      const { colors: col, look } = getBreed(d.breed);
 
       c.fillStyle = "rgba(0,0,0,0.18)"; c.fillRect(dx - 3, dy + 2, 7, 2);
 
       // Tail
       const tw = Math.sin(d.tailWag) * 0.5;
       const tailD = dir + Math.PI + tw;
-      const tailX = dx + Math.cos(tailD) * 5, tailY = dy + Math.sin(tailD) * 5;
-      c.fillStyle = "#1a1a1a"; c.fillRect(Math.floor(tailX), Math.floor(tailY), 2, 1);
-      c.fillStyle = "#eee8dd"; c.fillRect(Math.floor(tailX + Math.cos(tailD) * 1.5), Math.floor(tailY + Math.sin(tailD) * 1.5), 1, 1);
+      if (look.tail === "stub") {
+        const sx = dx + Math.cos(tailD) * 4, sy = dy + Math.sin(tailD) * 4;
+        c.fillStyle = col.coat; c.fillRect(Math.floor(sx), Math.floor(sy), 1, 1);
+      } else {
+        const tailX = dx + Math.cos(tailD) * 5, tailY = dy + Math.sin(tailD) * 5;
+        c.fillStyle = col.coat; c.fillRect(Math.floor(tailX), Math.floor(tailY), 2, 1);
+        c.fillStyle = col.tailTip; c.fillRect(Math.floor(tailX + Math.cos(tailD) * 1.5), Math.floor(tailY + Math.sin(tailD) * 1.5), 1, 1);
+      }
 
-      // Body
-      c.fillStyle = "#1a1a1a";
-      c.fillRect(dx - 2, dy - 2, 5, 4); c.fillRect(dx - 3, dy - 1, 7, 2);
-      c.fillStyle = "#eee8dd";
+      // Body — "short" sits a row lower (long and low), "slim" drops the belly row
+      c.fillStyle = col.coat;
+      if (look.body === "short") {
+        c.fillRect(dx - 2, dy - 1, 5, 3); c.fillRect(dx - 3, dy, 7, 2);
+      } else if (look.body === "slim") {
+        c.fillRect(dx - 2, dy - 2, 5, 3); c.fillRect(dx - 3, dy - 1, 7, 2);
+      } else {
+        c.fillRect(dx - 2, dy - 2, 5, 4); c.fillRect(dx - 3, dy - 1, 7, 2);
+      }
+      c.fillStyle = col.white;
       c.fillRect(Math.floor(dx + Math.cos(dir) * 1) - 1, Math.floor(dy + Math.sin(dir) * 1), 3, 2);
 
       // Head
       const hx2 = dx + Math.cos(dir) * 4.5, hy2 = dy + Math.sin(dir) * 4.5;
-      c.fillStyle = "#1a1a1a"; c.fillRect(Math.floor(hx2) - 2, Math.floor(hy2) - 1, 4, 3);
-      c.fillStyle = "#eee8dd"; c.fillRect(Math.floor(hx2), Math.floor(hy2) - 1, 1, 3);
+      c.fillStyle = col.coat; c.fillRect(Math.floor(hx2) - 2, Math.floor(hy2) - 1, 4, 3);
+      c.fillStyle = col.white; c.fillRect(Math.floor(hx2), Math.floor(hy2) - 1, 1, 3);
       const snX = hx2 + Math.cos(dir) * 2, snY = hy2 + Math.sin(dir) * 2;
-      c.fillStyle = "#eee8dd"; c.fillRect(Math.floor(snX), Math.floor(snY), 2, 1);
-      c.fillStyle = "#222"; c.fillRect(Math.floor(snX) + 1, Math.floor(snY), 1, 1);
-      c.fillStyle = "#d4a040";
+      c.fillStyle = col.white; c.fillRect(Math.floor(snX), Math.floor(snY), 2, 1);
+      c.fillStyle = col.nose; c.fillRect(Math.floor(snX) + 1, Math.floor(snY), 1, 1);
+      c.fillStyle = col.eye;
       c.fillRect(Math.floor(hx2) - 1, Math.floor(hy2) - 1, 1, 1);
       c.fillRect(Math.floor(hx2) + 1, Math.floor(hy2) - 1, 1, 1);
-      c.fillStyle = "#111";
-      c.fillRect(Math.floor(hx2) - 2, Math.floor(hy2) - 2, 1, 2);
-      c.fillRect(Math.floor(hx2) + 2, Math.floor(hy2) - 2, 1, 2);
+      // Ears — folded (collie tips) are 2px; upright ears stand a row taller
+      const earTop = look.ears === "upright" ? 3 : 2;
+      c.fillStyle = col.ear;
+      c.fillRect(Math.floor(hx2) - 2, Math.floor(hy2) - earTop, 1, earTop);
+      c.fillRect(Math.floor(hx2) + 2, Math.floor(hy2) - earTop, 1, earTop);
 
       if (whistleActive) {
         c.fillStyle = "rgba(255,255,200,0.22)";
@@ -301,9 +410,9 @@ function SheepHerdingGame() {
       }
     }
 
-    function renderSprites(c, sprites) {
+    function renderSprites(c, sprites, maxCols = 5) {
       const cellW = 48, cellH = 36;
-      const cols = Math.min(sprites.length, 5);
+      const cols = Math.min(sprites.length, maxCols);
       const rows = Math.ceil(sprites.length / cols);
       const gridW = cols * cellW, gridH = rows * cellH;
       const ox = Math.floor((W - gridW) / 2);
@@ -415,7 +524,7 @@ function SheepHerdingGame() {
       const sorted = [...g.sheep].sort((a, b) => a.y - b.y);
       sorted.forEach(s => drawSheep(c, s));
 
-      // Dog collie
+      // Dog
       drawDog(c, g.dog, g.tick, getWhistle());
 
       // Particles
@@ -430,7 +539,7 @@ function SheepHerdingGame() {
     // Scenario mode: render one frame, switch to target state, signal ready
     if (scenario) {
       if (scenario.sprites) {
-        renderSprites(ctx, scenario.sprites);
+        renderSprites(ctx, scenario.sprites, scenario.spriteColumns);
       } else {
         render(ctx);
       }
@@ -480,7 +589,7 @@ function SheepHerdingGame() {
       const settled = g.sheep.filter(s => s.settled && !s.popOut).length;
       setSheepCount(settled);
       if (settled === g.numSheep && !g.won && g.popQueue.length === 0) {
-        g.won = true; g.winDelay = 0; g.finalTime = timer;
+        g.won = true; g.winDelay = 0; g.finalTime = timer; g.finalBreed = g.dog.breed;
         winFanfare(ensureAudio());
         for (let p = 0; p < 50; p++) {
           const a = (p / 50) * Math.PI * 2, r = 30 + Math.random() * 35;
@@ -559,6 +668,43 @@ function SheepHerdingGame() {
     return () => cancelAnimationFrame(animId);
   }, [gameState, ensureAudio, totalSheep]);
 
+  // Live sheep-count change (settings dropdown): staggered pop-in/pop-out.
+  const changeSheepCount = (n) => {
+    if (n === totalSheep) return;
+    const g = gameRef.current;
+    if (!g) return;
+    ensureAudio();
+    // Cancel any pending pops and remove any mid-pop-out sheep
+    g.popQueue = [];
+    g.popQueueTimer = 0;
+    g.sheep = g.sheep.filter(s => !s.popOut);
+    g.sheep.forEach(s => { if (s.popIn) { s.popIn = false; s.scale = 1; } });
+    const currentCount = g.sheep.length;
+    const diff = n - currentCount;
+    if (diff > 0) {
+      // Add sheep with staggered pop-in
+      for (let i = 0; i < diff; i++) {
+        const s = createSheep(1)[0];
+        g.popQueue.push({ type: "add", sheep: s });
+      }
+    } else if (diff < 0) {
+      // Remove non-settled sheep first, then settled if needed
+      const removable = g.sheep
+        .filter(s => !s.popOut)
+        .sort((a, b) => {
+          // Non-settled before settled, then furthest from pen first
+          if (a.settled !== b.settled) return a.settled ? 1 : -1;
+          const da = Math.sqrt((a.x - PEN.x) ** 2 + (a.y - PEN.y) ** 2);
+          const db = Math.sqrt((b.x - PEN.x) ** 2 + (b.y - PEN.y) ** 2);
+          return db - da;
+        });
+      const toRemove = removable.slice(0, Math.abs(diff));
+      toRemove.forEach(s => g.popQueue.push({ type: "remove", sheep: s }));
+    }
+    g.numSheep = n;
+    setTotalSheep(n);
+  };
+
   const wDown = (cmd) => { whistleBtnRef.current = cmd; ensureAudio(); };
   const wUp = () => { whistleBtnRef.current = null; };
   const fmtTime = (s) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
@@ -597,52 +743,10 @@ function SheepHerdingGame() {
                 background: "#1a2410", border: "1px solid #3a4a20", borderRadius: 3,
                 padding: "10px 14px", minWidth: 180,
               }}>
-                <div style={{ color: "#a0b878", fontSize: 10, marginBottom: 6 }}>SHEEP COUNT</div>
-                <div style={{ display: "flex", gap: 4, marginBottom: 10 }}>
-                  {SHEEP_OPTIONS.map(n => (
-                    <button key={n} onClick={() => {
-                      if (n === totalSheep) return;
-                      const g = gameRef.current;
-                      if (!g) return;
-                      ensureAudio();
-                      // Cancel any pending pops and remove any mid-pop-out sheep
-                      g.popQueue = [];
-                      g.popQueueTimer = 0;
-                      g.sheep = g.sheep.filter(s => !s.popOut);
-                      g.sheep.forEach(s => { if (s.popIn) { s.popIn = false; s.scale = 1; } });
-                      const currentCount = g.sheep.length;
-                      const diff = n - currentCount;
-                      if (diff > 0) {
-                        // Add sheep with staggered pop-in
-                        for (let i = 0; i < diff; i++) {
-                          const s = createSheep(1)[0];
-                          g.popQueue.push({ type: "add", sheep: s });
-                        }
-                      } else if (diff < 0) {
-                        // Remove non-settled sheep first, then settled if needed
-                        const removable = g.sheep
-                          .filter(s => !s.popOut)
-                          .sort((a, b) => {
-                            // Non-settled before settled, then furthest from pen first
-                            if (a.settled !== b.settled) return a.settled ? 1 : -1;
-                            const da = Math.sqrt((a.x - PEN.x) ** 2 + (a.y - PEN.y) ** 2);
-                            const db = Math.sqrt((b.x - PEN.x) ** 2 + (b.y - PEN.y) ** 2);
-                            return db - da;
-                          });
-                        const toRemove = removable.slice(0, Math.abs(diff));
-                        toRemove.forEach(s => g.popQueue.push({ type: "remove", sheep: s }));
-                      }
-                      g.numSheep = n;
-                      setTotalSheep(n);
-                    }} style={{
-                      background: n === totalSheep ? "#4a6828" : "#222e14",
-                      color: n === totalSheep ? "#d0dca8" : "#8a9868",
-                      border: `1px solid ${n === totalSheep ? "#6a8a3a" : "#3a4a20"}`,
-                      borderRadius: 2, padding: "3px 9px", fontSize: 11,
-                      fontFamily: "'Courier New', monospace", cursor: "pointer",
-                    }}>{n}</button>
-                  ))}
-                </div>
+                <OptionRow variant="menu" label="DOG" value={breed} onSelect={switchBreed}
+                  options={BREED_OPTIONS} note={getBreed(breed).blurb} />
+                <OptionRow variant="menu" label="SHEEP COUNT" value={totalSheep} onSelect={changeSheepCount}
+                  options={SHEEP_OPTIONS.map(n => ({ value: n, label: n }))} />
                 <button onClick={() => { setShowSettings(false); initGame(); }} style={{
                   background: "#3a5820", color: "#d0dca8", border: "1px solid #5a7a38",
                   padding: "5px 14px", fontSize: 11, fontFamily: "'Courier New', monospace",
@@ -671,24 +775,15 @@ function SheepHerdingGame() {
             SHEEP HERDER
           </div>
           <div style={{ color: "#94a870", fontSize: 11, marginBottom: 14, textAlign: "center", lineHeight: 1.8, maxWidth: 380 }}>
-            Command your collie with three whistles.<br />
+            Command your dog with three whistles.<br />
             The dog circles or approaches sheep — they flee from it.<br />
             Position the dog to push sheep through the gate into the pen.<br />
             Release all whistles to let the dog rest and refocus.
           </div>
-          <div style={{ display: "flex", gap: 6, marginBottom: 12, alignItems: "center" }}>
-            <span style={{ color: "#8a9868", fontSize: 10, marginRight: 4 }}>SHEEP:</span>
-            {SHEEP_OPTIONS.map(n => (
-              <button key={n} onClick={() => setTotalSheep(n)} style={{
-                background: n === totalSheep ? "#4a6828" : "#1e2a12",
-                color: n === totalSheep ? "#d0dca8" : "#8a9868",
-                border: `1px solid ${n === totalSheep ? "#6a8a3a" : "#3a4a20"}`,
-                borderRadius: 2, padding: "4px 10px", fontSize: 12,
-                fontFamily: "'Courier New', monospace", cursor: "pointer",
-                transition: "all 0.15s",
-              }}>{n}</button>
-            ))}
-          </div>
+          <OptionRow variant="title" label="SHEEP" value={totalSheep} onSelect={setTotalSheep}
+            options={SHEEP_OPTIONS.map(n => ({ value: n, label: n }))} />
+          <OptionRow variant="title" label="DOG" value={breed} onSelect={switchBreed}
+            options={BREED_OPTIONS} note={getBreed(breed).blurb} />
           {(() => {
             const scores = getScores(totalSheep);
             const display = scores.length > 0 ? scores : [null];
@@ -703,7 +798,7 @@ function SheepHerdingGame() {
                     color: s ? "#94a870" : "#5a6838", fontSize: 11,
                     fontFamily: "'Courier New', monospace", padding: "1px 0",
                   }}>
-                    <span>{i + 1}. {s ? s.name : "---"}</span>
+                    <span>{i + 1}. {s ? s.name : "---"}{s && <BreedTag entry={s} />}</span>
                     <span>{s ? fmtTime(s.time) : "-:--"}</span>
                   </div>
                 ))}
@@ -731,7 +826,7 @@ function SheepHerdingGame() {
           const spin = (i, dir) => { setNameCursor(i); setNameChars(c => { const n = [...c]; n[i] = (n[i] + dir + 26) % 26; return n; }); };
           const submitName = () => {
             const name = nameChars.map(i => ALPHA[i]).join("");
-            const scores = saveScore(totalSheep, name, timer);
+            saveScore(totalSheep, name, timer, finishBreed());
             setLastScore({ name, time: timer });
             setGameState("won");
           };
@@ -801,7 +896,7 @@ function SheepHerdingGame() {
                     color: isThis ? "#ffd740" : s ? "#94a870" : "#5a6838", fontSize: 11,
                     fontFamily: "'Courier New', monospace", padding: "1px 0",
                   }}>
-                    <span>{i + 1}. {s ? s.name : "---"}</span>
+                    <span>{i + 1}. {s ? s.name : "---"}{s && <BreedTag entry={s} />}</span>
                     <span>{s ? fmtTime(s.time) : "-:--"}</span>
                   </div>);
                 })}

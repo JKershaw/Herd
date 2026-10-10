@@ -5,7 +5,9 @@
 //   name         — screenshot filename stem (e.g. "title-default" → title-default-desktop.png)
 //   description  — what this screenshot shows (printed in runner output)
 //   state        — object injected as window.__HERD_SCENARIO (overrides useState defaults)
-//                  state.scores — optional {n: [{name, time}, ...]} to override getScores()
+//                  state.scores — optional {n: [{name, time, breed?}, ...]} to override getScores()
+//                  state.breed — optional dog breed id ("collie" | "corgi" | "kelpie"); default collie
+//                  state.spriteColumns — optional max columns for a sprite sheet (default 5)
 //   setup        — optional async function(page) run after mount, before capture
 //   viewports    — optional array of viewport names to restrict to (default: all)
 
@@ -56,6 +58,22 @@ export default [
         { type: "dog", label: "Whistle", overrides: { renderDir: 0 }, whistleActive: true, tick: 105 },
         { type: "dog", label: "Looking", overrides: { renderDir: 0, idleTime: 1.1, lookDir: 0.3 } },
       ],
+    },
+    viewports: ["desktop"],
+  },
+  {
+    name: "sprites-dog-breeds",
+    description: "Each dog breed facing right, down, left and up (one row per breed)",
+    canvasOnly: true,
+    state: {
+      gameState: "playing",
+      spriteColumns: 4,
+      sprites: ["collie", "corgi", "kelpie"].flatMap(breed => [
+        { type: "dog", label: breed[0].toUpperCase() + breed.slice(1), overrides: { breed, renderDir: 0 } },
+        { type: "dog", label: "", overrides: { breed, renderDir: PI / 2 } },
+        { type: "dog", label: "", overrides: { breed, renderDir: PI } },
+        { type: "dog", label: "", overrides: { breed, renderDir: -PI / 2 } },
+      ]),
     },
     viewports: ["desktop"],
   },
@@ -110,6 +128,32 @@ export default [
     name: "settings-changed-count",
     description: "Settings dropdown after selecting a different sheep count (15)",
     state: { gameState: "playing", totalSheep: 15, timer: 15, sheepCount: 0, showSettings: true },
+  },
+  {
+    name: "settings-breed",
+    description: "Settings dropdown with the Corgi selected (dog row + blurb), corgi on the field",
+    state: { gameState: "playing", totalSheep: 7, timer: 15, sheepCount: 1, showSettings: true, breed: "corgi" },
+  },
+  {
+    name: "playing-kelpie",
+    description: "Playing with the Kelpie while come-bye is held",
+    state: { gameState: "playing", totalSheep: 7, timer: 12, sheepCount: 0, activeWhistle: "comebye", breed: "kelpie" },
+  },
+  {
+    name: "title-breed-kelpie",
+    description: "Title screen with Kelpie selected and a shared board of mixed-breed scores",
+    state: {
+      gameState: "title", totalSheep: 7, breed: "kelpie",
+      scores: {
+        7: [
+          { name: "ACE", time: 28, breed: "kelpie" },
+          { name: "SAM", time: 35 },
+          { name: "JOE", time: 42, breed: "corgi" },
+          { name: "MAX", time: 51, breed: "collie" },
+          { name: "ZOE", time: 67, breed: "corgi" },
+        ],
+      },
+    },
   },
   {
     name: "enter-name",

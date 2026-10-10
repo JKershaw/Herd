@@ -191,6 +191,42 @@ describe("breed tuning changes the simulation", () => {
     assert.ok(Math.abs(dog.angle - a0 - 1.5 * 0.5) < 1e-12, "kelpie circleRate should apply immediately");
     assert.equal(dog.focusIndex, before.focusIndex);
   });
+
+  // The ordering test above cannot pin circleDist on its own (a corgi cuts
+  // inside its orbit whatever the target is), so these pin each trait read
+  // in updateDog directly.
+  function settledDist(breed, cmd) {
+    const dog = createDog(breed);
+    const sheep = [makeSheep(120, 105)];
+    for (let i = 0; i < 600; i++) updateDog(dog, sheep, cmd, 1 / 60);
+    return dog.distFromFocus;
+  }
+
+  it("circling target distance follows circleDist (come-bye and away)", () => {
+    for (const id of BREED_IDS) {
+      for (const cmd of ["comebye", "away"]) {
+        const d = settledDist(id, cmd);
+        assert.ok(Math.abs(d - BREEDS[id].circleDist) < 0.5, `${id} ${cmd}: distFromFocus=${d}`);
+      }
+    }
+  });
+
+  it("walk-up target distance follows walkupDist", () => {
+    for (const id of BREED_IDS) {
+      const d = settledDist(id, "walkup");
+      assert.ok(Math.abs(d - BREEDS[id].walkupDist) < 0.5, `${id}: distFromFocus=${d}`);
+    }
+  });
+
+  it("first-step velocity from rest follows runSpeed * turnResponse", () => {
+    for (const id of BREED_IDS) {
+      const dog = createDog(id);
+      updateDog(dog, [makeSheep(60, 50)], "walkup", 1 / 60);
+      const v = Math.hypot(dog.vx, dog.vy);
+      const want = BREEDS[id].runSpeed * BREEDS[id].turnResponse;
+      assert.ok(Math.abs(v - want) < 1e-9, `${id}: speed=${v} want=${want}`);
+    }
+  });
 });
 
 describe("high scores with breed tags", () => {

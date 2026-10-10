@@ -49,6 +49,15 @@ The title screen is a standalone flow element (not inside the canvas container).
 - iOS-specific: `-webkit-tap-highlight-color: transparent`, `-webkit-touch-callout: none`.
 - Do not use `onMouseOver`/`onMouseOut` — causes stuck hover states on touch devices.
 
+## Dog breeds
+
+Breeds are rows in the `BREEDS` table in `game.js` (`collie`, `corgi`, `kelpie`). Every breed runs the same `updateDog`/`updateSheep` code; a row holds tuning numbers (`runSpeed`, `idleSpeed`, `circleRate`, `circleDist`, `walkupDist`, `turnResponse`, `presence`) plus a sprite palette and shape flags that `drawDog` reads. `getBreed(id)` falls back to collie for unknown or missing ids. The collie row must stay equal to the original constants — `tests/baseline.test.js` fails on any drift.
+
+- Adding a breed is a new table row (no new code paths).
+- The breed is chosen on the title screen or in the ⚙ dropdown and switches live mid-game (only `dog.breed` changes).
+- The choice persists in `localStorage["herd-breed"]`.
+- High scores stay one board per sheep count; entries carry `breed` (the breed active when the run finished), and untagged entries read as collie.
+
 ## Audio
 
 AudioContext is lazy-initialized on first user interaction (browser autoplay policy). Use `ensureAudio()` before playing sounds.
@@ -61,7 +70,7 @@ Uses Node's built-in test runner (zero dependencies). Pure game logic is extract
 npm test
 ```
 
-Covers: math utilities, fence/wall collision, pen detection, union-find clustering, entity factories, dog AI, sheep flocking/fleeing/settling, particle physics.
+Covers: math utilities, fence/wall collision, pen detection, union-find clustering, entity factories, dog AI, sheep flocking/fleeing/settling, particle physics, dog breeds (tuning table, fallback, high-score tagging) and a collie baseline (`tests/baseline.test.js`) that pins the default dog to the pre-breeds simulation.
 
 ## Screenshots (Playwright)
 
@@ -97,7 +106,9 @@ Add an object to `screenshots/scenarios.mjs`:
     showSettings: false,
     nameChars: [0, 0, 0], nameCursor: 0,
     lastScore: null,
-    scores: { 7: [{name, time}] }, // optional: overrides getScores()
+    breed: "collie",             // optional: "collie" | "corgi" | "kelpie" (default collie)
+    scores: { 7: [{name, time, breed}] }, // optional: overrides getScores(); breed optional
+    spriteColumns: 5,            // optional: max columns for a sprite sheet
   setup: async (page) => {},     // optional: Playwright interactions after mount
   viewports: ["desktop", "mobile"], // optional: default is both
   canvasOnly: false,             // optional: capture only the canvas element
@@ -117,7 +128,8 @@ Use `state.sprites` to render individual characters on a clean background instea
     sprites: [
       { type: "sheep", label: "Walking", overrides: { headDir: 0, wobble: 0.8 } },
       { type: "sheep", label: "Grazing", overrides: { isGrazing: true, wobble: 1.5, headDir: PI / 2 } },
-      // type: "dog" also supported, with whistleActive and tick options
+      // type: "dog" also supported, with whistleActive and tick options;
+      // dog overrides accept breed, e.g. { breed: "corgi", renderDir: 0 }
     ],
   },
   viewports: ["desktop"],

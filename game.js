@@ -9,6 +9,75 @@ export const H = 210;
 export const PEN = { x: 224, y: 14, w: 40, h: H - 30, gateY: 55, gateH: 75 };
 export const FENCE_L = 14, FENCE_R = W - 14, FENCE_T = 14, FENCE_B = H - 14;
 
+// === Dog breeds ===
+// Data-driven tuning: every breed runs the same updateDog/updateSheep code and
+// differs only by these numbers (plus a sprite palette and shape flags read by
+// drawDog in app.jsx). The collie row holds exactly the constants the game used
+// before breeds existed — tests/baseline.test.js pins that behaviour.
+//
+//   runSpeed      dog speed while a whistle is held (px/s)
+//   idleSpeed     dog speed with no whistle (px/s)
+//   circleRate    come-bye / away angular rate around the focus flock (rad/s)
+//   circleDist    distance the dog settles to while circling (px)
+//   walkupDist    distance the dog closes to on walk-up (px)
+//   turnResponse  per-frame velocity lerp (higher = snappier, lower = overshoots)
+//   presence      multiplier on the sheep flee radius (FLEE_DIST * presence)
+export const FLEE_DIST = 56;
+
+export const BREEDS = deepFreeze({
+  collie: {
+    id: "collie", name: "Border Collie", short: "COLLIE",
+    blurb: "Balanced all-rounder with a strong eye.",
+    runSpeed: 80, idleSpeed: 22, circleRate: 1.7, circleDist: 48, walkupDist: 20,
+    turnResponse: 0.12, presence: 1,
+    colors: { coat: "#1a1a1a", white: "#eee8dd", eye: "#d4a040", ear: "#111", nose: "#222", tailTip: "#eee8dd" },
+    look: { ears: "folded", body: "standard", tail: "plume" },
+  },
+  corgi: {
+    id: "corgi", name: "Corgi", short: "CORGI",
+    blurb: "Slow but nimble. Tight circles; sheep scatter less.",
+    runSpeed: 66, idleSpeed: 20, circleRate: 1.9, circleDist: 38, walkupDist: 16,
+    turnResponse: 0.18, presence: 0.85,
+    colors: { coat: "#c8702a", white: "#f4ecdc", eye: "#2a1808", ear: "#a85a20", nose: "#222", tailTip: "#c8702a" },
+    look: { ears: "upright", body: "short", tail: "stub" },
+  },
+  kelpie: {
+    id: "kelpie", name: "Kelpie", short: "KELPIE",
+    blurb: "Fast, wide casts. Overshoots; sheep react from further out.",
+    runSpeed: 92, idleSpeed: 26, circleRate: 1.5, circleDist: 56, walkupDist: 24,
+    turnResponse: 0.09, presence: 1.1,
+    colors: { coat: "#6b3a1e", white: "#c8945a", eye: "#e0b050", ear: "#4e2814", nose: "#1a1a1a", tailTip: "#6b3a1e" },
+    look: { ears: "upright", body: "slim", tail: "plume" },
+  },
+});
+export const BREED_IDS = Object.keys(BREEDS);
+export const DEFAULT_BREED = "collie";
+
+function deepFreeze(o) {
+  Object.values(o).forEach(v => { if (v && typeof v === "object") deepFreeze(v); });
+  return Object.freeze(o);
+}
+
+// Unknown, missing or malformed ids (old saves, bad localStorage, the pre-start
+// placeholder dog) all fall back to the collie. hasOwn guards against
+// prototype keys such as "toString".
+export function normalizeBreedId(id) {
+  return typeof id === "string" && Object.prototype.hasOwnProperty.call(BREEDS, id) ? id : DEFAULT_BREED;
+}
+export function getBreed(id) { return BREEDS[normalizeBreedId(id)]; }
+
+// === High scores (pure list logic; storage lives in app.jsx) ===
+// One shared board per sheep count. Each new entry is tagged with the breed
+// that finished the run; untagged legacy entries are left as-is and read as
+// collie via scoreBreed(). Ordering matches the pre-breeds saveScore: push,
+// stable sort by time (ties go after existing entries), keep the top 5.
+export function addScore(list, name, time, breed) {
+  const next = [...list, { name: name.toUpperCase(), time, breed: normalizeBreedId(breed) }];
+  next.sort((a, b) => a.time - b.time);
+  return next.slice(0, 5);
+}
+export function scoreBreed(entry) { return getBreed(entry && entry.breed); }
+
 // === Math utilities ===
 
 export function lerp(a, b, t) { return a + (b - a) * t; }
@@ -82,8 +151,9 @@ export function createSheep(n) {
   }));
 }
 
-export function createDog() {
+export function createDog(breed = DEFAULT_BREED) {
   return {
+    breed: normalizeBreedId(breed),
     x: 110, y: 185, vx: 0, vy: 0,
     targetX: 110, targetY: 185,
     angle: Math.PI * 0.5, distFromFocus: 65,
@@ -132,14 +202,18 @@ export function updateDog(dog, sheep, cmd, dt) {
   dog.lookTarget = Math.atan2(focus.y - dog.y, focus.x - dog.x);
   dog.lookDir += angleDiff(dog.lookDir, dog.lookTarget) * Math.min(dt * 4, 0.15);
 
+  // Read every frame (not cached on the dog) so a live breed switch applies
+  // on the very next update without resetting position or AI state.
+  const breed = getBreed(dog.breed);
+
   if (cmd === "comebye") {
-    dog.angle += 1.7 * dt;
-    dog.distFromFocus = lerp(dog.distFromFocus, 48, 0.03);
+    dog.angle += breed.circleRate * dt;
+    dog.distFromFocus = lerp(dog.distFromFocus, breed.circleDist, 0.03);
   } else if (cmd === "away") {
-    dog.angle -= 1.7 * dt;
-    dog.distFromFocus = lerp(dog.distFromFocus, 48, 0.03);
+    dog.angle -= breed.circleRate * dt;
+    dog.distFromFocus = lerp(dog.distFromFocus, breed.circleDist, 0.03);
   } else if (cmd === "walkup") {
-    dog.distFromFocus = lerp(dog.distFromFocus, 20, 0.04);
+    dog.distFromFocus = lerp(dog.distFromFocus, breed.walkupDist, 0.04);
   } else {
     dog.distFromFocus = lerp(dog.distFromFocus, dog.distFromFocus + 0.2, 0.005);
   }
@@ -160,10 +234,10 @@ export function updateDog(dog, sheep, cmd, dt) {
 
   const dx = dog.targetX - dog.x, dy = dog.targetY - dog.y;
   const d = Math.sqrt(dx * dx + dy * dy);
-  const spd = cmd ? 80 : 22;
+  const spd = cmd ? breed.runSpeed : breed.idleSpeed;
   if (d > 0.5) {
-    dog.vx = lerp(dog.vx, (dx / d) * spd, 0.12);
-    dog.vy = lerp(dog.vy, (dy / d) * spd, 0.12);
+    dog.vx = lerp(dog.vx, (dx / d) * spd, breed.turnResponse);
+    dog.vy = lerp(dog.vy, (dy / d) * spd, breed.turnResponse);
   } else { dog.vx *= 0.8; dog.vy *= 0.8; }
 
   // Pen avoidance — if the dog is inside the pen, steer it toward the gate exit
@@ -199,7 +273,10 @@ export function updateDog(dog, sheep, cmd, dt) {
 }
 
 export function updateSheep(sheep, dog, dt, tick) {
-  const fleeDist = 56;
+  // The dog's breed sets how far out sheep react. Callers that pass a plain
+  // {x, y} (tests, and app.jsx's off-field placeholder before the first
+  // whistle) have no breed and get the collie radius.
+  const fleeDist = FLEE_DIST * getBreed(dog.breed).presence;
   let settledCount = 0;
   const newParticles = [];
 
@@ -342,6 +419,8 @@ export function updateSheep(sheep, dog, dt, tick) {
 if (typeof window !== 'undefined') {
   Object.assign(window, {
     W, H, PEN, FENCE_L, FENCE_R, FENCE_T, FENCE_B,
+    FLEE_DIST, BREEDS, BREED_IDS, DEFAULT_BREED, normalizeBreedId, getBreed,
+    addScore, scoreBreed,
     lerp, dist, clamp, angleDiff,
     wallInfo, fenceCollide, isInPen,
     clusterSheep, createSheep, createDog,
